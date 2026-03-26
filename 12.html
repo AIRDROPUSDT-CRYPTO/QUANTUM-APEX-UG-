@@ -43,7 +43,6 @@ button{
 .claim-btn{background:#22c55e;}
 .disabled{opacity:0.4;pointer-events:none;}
 
-/* POPUP */
 .overlay{
   position:fixed;
   inset:0;
@@ -69,7 +68,6 @@ button{
   border-radius:18px;
   padding:22px;
   text-align:center;
-  box-shadow:0 0 30px rgba(56,189,248,0.2);
 }
 
 .popup.success{border:1px solid #22c55e;}
@@ -100,7 +98,7 @@ button{
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-import { getDatabase, ref, onValue, update, push, get } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+import { getDatabase, ref, onValue, push, runTransaction } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
 
 /* ELEMENTS */
@@ -111,7 +109,7 @@ const popTitle = document.getElementById("popTitle");
 const popMsg = document.getElementById("popMsg");
 const popBtn = document.getElementById("popBtn");
 
-/* ✅ CORRECT FIREBASE CONFIG */
+/* FIREBASE CONFIG */
 const firebaseConfig = {
   apiKey: "AIzaSyCc637WbfRNZ8-0CN4sEqEnGY27-oAdGiw",
   authDomain: "betpawa-6ef7e.firebaseapp.com",
@@ -133,7 +131,10 @@ const DAILY_PERCENT = 0.0917;
 const DAYS = 12;
 
 let uid=null;
-let cachedData={};
+let investmentsData={};
+
+/* 🔒 anti double click */
+let claiming = {};
 
 /* POPUP */
 function showPopup(title,msg,type="info",btnText=null,action=null){
@@ -152,25 +153,24 @@ function showPopup(title,msg,type="info",btnText=null,action=null){
   }
 }
 
-/* CLOSE ON TOUCH */
 overlay.onclick = (e)=>{
   if(e.target === overlay) overlay.classList.remove("show");
 };
 
 /* TIME */
 function formatTime(ms){
-  if(ms<=0) return "Ready";
-  let t=Math.floor(ms/1000);
-  let h=Math.floor(t/3600);
-  let m=Math.floor((t%3600)/60);
-  let s=t%60;
+  if(ms <= 0) return "Ready to claim";
+  let t = Math.floor(ms/1000);
+  let h = Math.floor(t/3600);
+  let m = Math.floor((t%3600)/60);
+  let s = t%60;
   return `${h}h ${m}m ${s}s`;
 }
 
-/* CLEAN DATA */
+/* SANITIZE */
 function sanitize(data){
   let clean={};
-  Object.keys(data).forEach(k=>{
+  Object.keys(data || {}).forEach(k=>{
     if(typeof data[k]==="object"){
       clean[k]={...data[k],id:k};
     }
@@ -183,16 +183,16 @@ function renderPlans(){
   plansDiv.innerHTML="";
 
   plans.forEach(amount=>{
-    let active = Object.values(cachedData).find(i=>i.amount===amount);
+    let active = Object.values(investmentsData).find(i=>i.amount===amount);
 
     let div=document.createElement("div");
     div.className="plan";
 
     if(active){
       let finished = active.completed;
-      let baseTime = active.lastClaim || active.startTime;
-      let remaining = (baseTime + 86400000) - Date.now();
-      let canClaim = remaining<=0;
+      let lastTime = active.lastClaim || active.startTime;
+      let remaining = (lastTime + 86400000) - Date.now();
+      let canClaim = remaining <= 0;
 
       div.innerHTML=`
         <h3>${amount.toLocaleString()} UGX</h3>
@@ -235,89 +235,100 @@ function renderPlans(){
   });
 }
 
-/* LIVE TIMER */
 setInterval(renderPlans,1000);
 
-/* INVEST */
+/* INVEST (SAFE) */
 async function invest(amount){
 
-  let exists = Object.values(cachedData).find(i=>i.amount===amount);
+  let exists = Object.values(investmentsData).find(i=>i.amount===amount);
   if(exists){
     showPopup("Active Plan","You already invested in this plan","info");
     return;
   }
 
-  const userRef = ref(db,"users/"+uid);
-  const user = (await get(userRef)).val();
+  const investRef = push(ref(db,"investments/"+uid+"/12days"));
 
-  if((user.balance||0) < amount){
-    showPopup(
-      "Insufficient Balance",
-      "Proceed to deposit?",
-      "error",
-      "Confirm",
+  let success = false;
+
+  await runTransaction(ref(db,"users/"+uid), user=>{
+    if(user){
+      if((user.balance||0) < amount) return;
+      user.balance -= amount;
+      user.lockedBalance = (user.lockedBalance||0) + (amount * DAILY_PERCENT * DAYS);
+      success = true;
+    }
+    return user;
+  });
+
+  if(!success){
+    showPopup("Insufficient Balance","Proceed to deposit?","error","Confirm",
       ()=>window.location.href="deposit.html"
     );
     return;
   }
 
-  const daily = amount * DAILY_PERCENT;
-  const total = daily * DAYS;
-
-  const newRef = push(ref(db,"investments/"+uid+"/12days"));
-
-  await update(userRef,{
-    balance:user.balance-amount,
-    lockedBalance:(user.lockedBalance||0)+total
-  });
-
-  await update(newRef,{
-    amount,
-    daily,
-    total,
-    remaining:total,
-    lastClaim:0,
-    startTime:Date.now(),
-    daysClaimed:0,
-    completed:false
+  await runTransaction(investRef, data=>{
+    return {
+      amount,
+      daily: amount * DAILY_PERCENT,
+      total: amount * DAILY_PERCENT * DAYS,
+      remaining: amount * DAILY_PERCENT * DAYS,
+      lastClaim:0,
+      startTime:Date.now(),
+      daysClaimed:0,
+      completed:false
+    };
   });
 
   showPopup("Success","Investment started","success");
 }
 
-/* CLAIM */
+/* CLAIM (SAFE) */
 async function claim(id){
-  const investRef = ref(db,"investments/"+uid+"/12days/"+id);
-  const userRef = ref(db,"users/"+uid);
 
-  const data = (await get(investRef)).val();
+  if(claiming[id]) return;
+  claiming[id]=true;
 
-  let baseTime = data.lastClaim || data.startTime;
+  try{
+    const investPath = ref(db,"investments/"+uid+"/12days/"+id);
 
-  if(Date.now() - baseTime < 86400000){
-    showPopup("Wait","Come back after 24hrs");
-    return;
+    let payout = 0;
+    let allowed = false;
+
+    await runTransaction(investPath, data=>{
+      if(data){
+        let lastTime = data.lastClaim || data.startTime;
+
+        if(Date.now() >= lastTime + 86400000){
+          payout = Math.floor(data.daily);
+          data.lastClaim = Date.now();
+          data.daysClaimed += 1;
+          data.remaining -= payout;
+          data.completed = data.daysClaimed >= DAYS;
+          allowed = true;
+        }
+      }
+      return data;
+    });
+
+    if(!allowed){
+      showPopup("Wait","Come back after 24hrs");
+      return;
+    }
+
+    await runTransaction(ref(db,"users/"+uid), user=>{
+      if(user){
+        user.balance = (user.balance||0) + payout;
+        user.lockedBalance = (user.lockedBalance||0) - payout;
+      }
+      return user;
+    });
+
+    showPopup("Success","Earnings received","success");
+
+  }finally{
+    claiming[id]=false;
   }
-
-  let daily = Math.floor(data.daily);
-  let newDays = data.daysClaimed + 1;
-  let done = newDays >= DAYS;
-
-  await update(investRef,{
-    lastClaim:Date.now(),
-    daysClaimed:newDays,
-    remaining:data.remaining-daily,
-    completed:done
-  });
-
-  const u = (await get(userRef)).val();
-
-  await update(userRef,{
-    balance:(u.balance||0)+daily,
-    lockedBalance:(u.lockedBalance||0)-daily
-  });
-
-  showPopup("Success","Earnings received","success");
 }
 
 /* REALTIME */
@@ -326,7 +337,7 @@ onAuthStateChanged(auth,user=>{
     uid=user.uid;
 
     onValue(ref(db,"investments/"+uid+"/12days"),snap=>{
-      cachedData = sanitize(snap.val()||{});
+      investmentsData = sanitize(snap.val());
       renderPlans();
     });
 
