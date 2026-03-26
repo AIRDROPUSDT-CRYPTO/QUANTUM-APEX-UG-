@@ -216,7 +216,7 @@ function render(){
   });
 }
 
-/* ✅ INVEST (FIXED BALANCE SYNC) */
+/* ✅ FIXED INVEST (SAFE TRANSACTION) */
 async function invest(amount){
 
   if(!user || !userData){
@@ -231,19 +231,25 @@ async function invest(amount){
 
   const total=amount*DAILY_PERCENT*DAYS;
 
-  await runTransaction(ref(db,"users/"+uid),u=>{
-    if(!u) return;
+  await runTransaction(ref(db,"users/"+uid),(u)=>{
+    if(!u) return u;
 
-    u.balance -= amount;
-    u.withdrawableBalance = (u.withdrawableBalance||0) - amount; // ✅ SYNC
+    if((u.balance||0) < amount){
+      return; // abort safely
+    }
+
+    u.balance = (u.balance||0) - amount;
+
+    /* KEEP YOUR LOGIC */
+    u.withdrawableBalance = u.balance;
 
     u.lockedBalance = (u.lockedBalance||0) + total;
 
     return u;
   });
 
-  await runTransaction(ref(db,"investments/"+uid+"/12days/"+amount),d=>{
-    if(d) return;
+  await runTransaction(ref(db,"investments/"+uid+"/12days/"+amount),(d)=>{
+    if(d) return d;
     return {
       amount,
       daily:amount*DAILY_PERCENT,
@@ -259,12 +265,12 @@ async function invest(amount){
   showPopup("success","Success","Investment started");
 }
 
-/* ✅ CLAIM (FIXED BALANCE SYNC) */
+/* CLAIM */
 async function claim(amount){
   const uid=user.uid;
   let pay=0,ok=false;
 
-  await runTransaction(ref(db,"investments/"+uid+"/12days/"+amount),d=>{
+  await runTransaction(ref(db,"investments/"+uid+"/12days/"+amount),(d)=>{
     if(d){
       let last=d.lastClaim||d.startTime;
       if(Date.now()>=last+86400000){
@@ -281,10 +287,16 @@ async function claim(amount){
 
   if(!ok) return showPopup("info","Please wait","Not yet time");
 
-  await runTransaction(ref(db,"users/"+uid),u=>{
-    u.balance += pay;
-    u.withdrawableBalance = (u.withdrawableBalance||0) + pay; // ✅ SYNC
-    u.lockedBalance -= pay;
+  await runTransaction(ref(db,"users/"+uid),(u)=>{
+    if(!u) return u;
+
+    u.balance = (u.balance||0) + pay;
+
+    /* KEEP YOUR LOGIC */
+    u.withdrawableBalance = u.balance;
+
+    u.lockedBalance = (u.lockedBalance||0) - pay;
+
     return u;
   });
 
@@ -317,4 +329,4 @@ setInterval(render,1000);
 </script>
 
 </body>
-  </html>
+</html>
