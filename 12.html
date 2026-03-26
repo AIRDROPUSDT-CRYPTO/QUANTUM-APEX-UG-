@@ -23,60 +23,50 @@ body{
   border-radius:16px;
   margin-bottom:15px;
   box-shadow:0 0 20px rgba(0,0,0,0.3);
+  transition:0.3s;
 }
 
-.plan h3{color:#38bdf8;}
-.plan p{font-size:13px;color:#94a3b8;margin:4px 0;}
+.plan:hover{
+  transform:translateY(-2px);
+  box-shadow:0 10px 30px rgba(0,0,0,0.5);
+}
+
+.plan h3{
+  color:#38bdf8;
+  font-size:22px;
+  margin-bottom:6px;
+}
+
+.plan p{
+  font-size:13px;
+  color:#94a3b8;
+  margin:4px 0;
+}
 
 button{
   width:100%;
   padding:12px;
   border:none;
   border-radius:30px;
-  margin-top:10px;
+  margin-top:12px;
   background:linear-gradient(45deg,#38bdf8,#6366f1);
   color:#fff;
   cursor:pointer;
   font-weight:600;
+  transition:0.2s;
 }
 
-.claim-btn{background:#22c55e;}
-.disabled{opacity:0.4;pointer-events:none;}
+button:hover{
+  opacity:0.9;
+}
 
-.overlay{
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,0.6);
-  backdrop-filter:blur(6px);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  opacity:0;
+.claim-btn{
+  background:linear-gradient(45deg,#22c55e,#16a34a);
+}
+
+.disabled{
+  opacity:0.4;
   pointer-events:none;
-  transition:0.3s;
-  z-index:999;
-}
-
-.overlay.show{
-  opacity:1;
-  pointer-events:auto;
-}
-
-.popup{
-  width:300px;
-  background:linear-gradient(135deg,#0f172a,#020617);
-  border-radius:18px;
-  padding:22px;
-  text-align:center;
-}
-
-.popup.success{border:1px solid #22c55e;}
-.popup.error{border:1px solid #ef4444;}
-.popup.info{border:1px solid #38bdf8;}
-
-.popup button{
-  margin-top:14px;
-  background:#22c55e;
 }
 </style>
 </head>
@@ -88,28 +78,12 @@ button{
 <div id="plans"></div>
 </div>
 
-<div id="overlay" class="overlay">
-  <div id="popup" class="popup">
-    <h3 id="popTitle"></h3>
-    <p id="popMsg"></p>
-    <button id="popBtn" style="display:none;"></button>
-  </div>
-</div>
-
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-import { getDatabase, ref, onValue, push, runTransaction } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+import { getDatabase, ref, onValue, runTransaction, set } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
 
-/* ELEMENTS */
-const plansDiv = document.getElementById("plans");
-const overlay = document.getElementById("overlay");
-const popup = document.getElementById("popup");
-const popTitle = document.getElementById("popTitle");
-const popMsg = document.getElementById("popMsg");
-const popBtn = document.getElementById("popBtn");
-
-/* FIREBASE CONFIG */
+/* FIREBASE */
 const firebaseConfig = {
   apiKey: "AIzaSyCc637WbfRNZ8-0CN4sEqEnGY27-oAdGiw",
   authDomain: "betpawa-6ef7e.firebaseapp.com",
@@ -117,8 +91,7 @@ const firebaseConfig = {
   projectId: "betpawa-6ef7e",
   storageBucket: "betpawa-6ef7e.firebasestorage.app",
   messagingSenderId: "908050081607",
-  appId: "1:908050081607:web:db6e861fca63df78584e62",
-  measurementId: "G-C7M7HWTD01"
+  appId: "1:908050081607:web:db6e861fca63df78584e62"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -131,86 +104,56 @@ const DAILY_PERCENT = 0.0917;
 const DAYS = 12;
 
 let uid=null;
-let investmentsData={};
-
-/* 🔒 anti double click */
-let claiming = {};
-
-/* POPUP */
-function showPopup(title,msg,type="info",btnText=null,action=null){
-  popTitle.innerText = title;
-  popMsg.innerText = msg;
-  popup.className = "popup "+type;
-  overlay.classList.add("show");
-
-  if(btnText){
-    popBtn.style.display="block";
-    popBtn.innerText=btnText;
-    popBtn.onclick=action;
-  }else{
-    popBtn.style.display="none";
-    setTimeout(()=>overlay.classList.remove("show"),2000);
-  }
-}
-
-overlay.onclick = (e)=>{
-  if(e.target === overlay) overlay.classList.remove("show");
-};
+let investments = {};
+let userData = {};
 
 /* TIME */
 function formatTime(ms){
   if(ms <= 0) return "Ready to claim";
-  let t = Math.floor(ms/1000);
-  let h = Math.floor(t/3600);
-  let m = Math.floor((t%3600)/60);
-  let s = t%60;
+  let t=Math.floor(ms/1000);
+  let h=Math.floor(t/3600);
+  let m=Math.floor((t%3600)/60);
+  let s=t%60;
   return `${h}h ${m}m ${s}s`;
 }
 
-/* SANITIZE */
-function sanitize(data){
-  let clean={};
-  Object.keys(data || {}).forEach(k=>{
-    if(typeof data[k]==="object"){
-      clean[k]={...data[k],id:k};
-    }
-  });
-  return clean;
-}
-
 /* RENDER */
-function renderPlans(){
-  plansDiv.innerHTML="";
+function render(){
+  const container = document.getElementById("plans");
+  container.innerHTML="";
 
   plans.forEach(amount=>{
-    let active = Object.values(investmentsData).find(i=>i.amount===amount);
+
+    let active = investments[amount];
 
     let div=document.createElement("div");
     div.className="plan";
 
     if(active){
-      let finished = active.completed;
-      let lastTime = active.lastClaim || active.startTime;
+
+      let lastTime = active.lastClaim === 0 ? active.startTime : active.lastClaim;
       let remaining = (lastTime + 86400000) - Date.now();
       let canClaim = remaining <= 0;
 
-      div.innerHTML=`
+      div.innerHTML = `
         <h3>${amount.toLocaleString()} UGX</h3>
         <p>Daily: ${Math.floor(active.daily)} UGX</p>
         <p>Progress: ${active.daysClaimed}/${DAYS}</p>
-        <p>${finished ? "Completed" : formatTime(remaining)}</p>
+        <p>${active.completed ? "Completed" : formatTime(remaining)}</p>
       `;
 
       let btn=document.createElement("button");
       btn.className="claim-btn";
 
-      if(finished){
+      if(active.completed){
         btn.innerText="Completed";
         btn.classList.add("disabled");
-      }else if(canClaim){
+      }
+      else if(canClaim){
         btn.innerText="Receive Today's Earnings";
-        btn.onclick=()=>claim(active.id);
-      }else{
+        btn.onclick=()=>claim(amount);
+      }
+      else{
         btn.innerText="Locked";
         btn.classList.add("disabled");
       }
@@ -218,7 +161,8 @@ function renderPlans(){
       div.appendChild(btn);
 
     }else{
-      div.innerHTML=`
+
+      div.innerHTML = `
         <h3>${amount.toLocaleString()} UGX</h3>
         <p>Duration: 12 Days</p>
         <p>Daily Profit: 9.17%</p>
@@ -231,48 +175,27 @@ function renderPlans(){
       div.appendChild(btn);
     }
 
-    plansDiv.appendChild(div);
+    container.appendChild(div);
   });
 }
 
-setInterval(renderPlans,1000);
+setInterval(render,1000);
 
-/* INVEST (SAFE) */
+/* INVEST */
 async function invest(amount){
 
-  let exists = Object.values(investmentsData).find(i=>i.amount===amount);
-  if(exists){
-    showPopup("Active Plan","You already invested in this plan","info");
-    return;
-  }
+  const path = "investments/"+uid+"/12days/"+amount;
 
-  const investRef = push(ref(db,"investments/"+uid+"/12days"));
+  let created = false;
 
-  let success = false;
-
-  await runTransaction(ref(db,"users/"+uid), user=>{
-    if(user){
-      if((user.balance||0) < amount) return;
-      user.balance -= amount;
-      user.lockedBalance = (user.lockedBalance||0) + (amount * DAILY_PERCENT * DAYS);
-      success = true;
-    }
-    return user;
-  });
-
-  if(!success){
-    showPopup("Insufficient Balance","Proceed to deposit?","error","Confirm",
-      ()=>window.location.href="deposit.html"
-    );
-    return;
-  }
-
-  await runTransaction(investRef, data=>{
+  await runTransaction(ref(db,path), data=>{
+    if(data) return;
+    created = true;
     return {
       amount,
-      daily: amount * DAILY_PERCENT,
-      total: amount * DAILY_PERCENT * DAYS,
-      remaining: amount * DAILY_PERCENT * DAYS,
+      daily: amount*DAILY_PERCENT,
+      total: amount*DAILY_PERCENT*DAYS,
+      remaining: amount*DAILY_PERCENT*DAYS,
       lastClaim:0,
       startTime:Date.now(),
       daysClaimed:0,
@@ -280,55 +203,65 @@ async function invest(amount){
     };
   });
 
-  showPopup("Success","Investment started","success");
+  if(!created){
+    alert("Already invested in this plan");
+    return;
+  }
+
+  let success=false;
+
+  await runTransaction(ref(db,"users/"+uid), user=>{
+    if(user){
+      if((user.balance||0) < amount) return;
+      user.balance -= amount;
+      user.lockedBalance = (user.lockedBalance||0)+(amount*DAILY_PERCENT*DAYS);
+      success=true;
+    }
+    return user;
+  });
+
+  if(!success){
+    await set(ref(db,path), null);
+    alert("Insufficient balance");
+  }
 }
 
-/* CLAIM (SAFE) */
-async function claim(id){
+/* CLAIM */
+async function claim(amount){
 
-  if(claiming[id]) return;
-  claiming[id]=true;
+  const investRef = ref(db,"investments/"+uid+"/12days/"+amount);
 
-  try{
-    const investPath = ref(db,"investments/"+uid+"/12days/"+id);
+  let payout=0;
+  let allowed=false;
 
-    let payout = 0;
-    let allowed = false;
+  await runTransaction(investRef,data=>{
+    if(data){
+      let lastTime = data.lastClaim===0 ? data.startTime : data.lastClaim;
 
-    await runTransaction(investPath, data=>{
-      if(data){
-        let lastTime = data.lastClaim || data.startTime;
-
-        if(Date.now() >= lastTime + 86400000){
-          payout = Math.floor(data.daily);
-          data.lastClaim = Date.now();
-          data.daysClaimed += 1;
-          data.remaining -= payout;
-          data.completed = data.daysClaimed >= DAYS;
-          allowed = true;
-        }
+      if(Date.now() >= lastTime + 86400000){
+        payout = Math.floor(data.daily);
+        data.lastClaim = Date.now();
+        data.daysClaimed++;
+        data.remaining -= payout;
+        data.completed = data.daysClaimed >= DAYS;
+        allowed=true;
       }
-      return data;
-    });
-
-    if(!allowed){
-      showPopup("Wait","Come back after 24hrs");
-      return;
     }
+    return data;
+  });
 
-    await runTransaction(ref(db,"users/"+uid), user=>{
-      if(user){
-        user.balance = (user.balance||0) + payout;
-        user.lockedBalance = (user.lockedBalance||0) - payout;
-      }
-      return user;
-    });
-
-    showPopup("Success","Earnings received","success");
-
-  }finally{
-    claiming[id]=false;
+  if(!allowed){
+    alert("Wait 24hrs");
+    return;
   }
+
+  await runTransaction(ref(db,"users/"+uid), user=>{
+    if(user){
+      user.balance = (user.balance||0)+payout;
+      user.lockedBalance = (user.lockedBalance||0)-payout;
+    }
+    return user;
+  });
 }
 
 /* REALTIME */
@@ -336,13 +269,21 @@ onAuthStateChanged(auth,user=>{
   if(user){
     uid=user.uid;
 
-    onValue(ref(db,"investments/"+uid+"/12days"),snap=>{
-      investmentsData = sanitize(snap.val());
-      renderPlans();
+    onValue(ref(db,"users/"+uid),snap=>{
+      userData = snap.val() || {};
     });
 
-  }else{
-    renderPlans();
+    onValue(ref(db,"investments/"+uid+"/12days"),snap=>{
+      let raw = snap.val() || {};
+      investments = {};
+
+      Object.keys(raw).forEach(k=>{
+        investments[parseInt(k)] = raw[k];
+      });
+
+      render();
+    });
+
   }
 });
 </script>
