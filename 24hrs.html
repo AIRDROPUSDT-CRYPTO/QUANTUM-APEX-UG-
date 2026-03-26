@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>24 Hours Plan</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+
+<style>
+*{
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
+  font-family:'Poppins',sans-serif;
+}
+
+body{
+  background:linear-gradient(135deg,#020617,#0f172a,#1e293b);
+  color:#fff;
+}
+
+.container{
+  padding:20px;
+}
+
+.plan{
+  background:linear-gradient(135deg,#1e293b,#020617);
+  padding:18px;
+  border-radius:14px;
+  margin-bottom:15px;
+}
+
+.plan h3{
+  color:#38bdf8;
+}
+
+.plan p{
+  font-size:13px;
+  color:#94a3b8;
+  margin:4px 0;
+}
+
+button{
+  width:100%;
+  padding:10px;
+  border:none;
+  border-radius:25px;
+  margin-top:10px;
+  background:linear-gradient(45deg,#38bdf8,#6366f1);
+  color:#fff;
+  cursor:pointer;
+}
+
+.claim-btn{
+  background:#22c55e;
+}
+
+.disabled{
+  opacity:0.5;
+  pointer-events:none;
+}
+
+/* OVERLAY */
+.overlay{
+  position:fixed;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  background:rgba(0,0,0,0.5);
+  display:none;
+  z-index:998;
+}
+
+/* POPUP */
+.popup{
+  position:fixed;
+  top:50%;
+  left:50%;
+  transform:translate(-50%,-50%) scale(0.9);
+  padding:20px;
+  border-radius:12px;
+  text-align:center;
+  width:280px;
+  opacity:0;
+  transition:0.3s;
+  z-index:999;
+  color:#fff;
+}
+
+.popup.show{
+  opacity:1;
+  transform:translate(-50%,-50%) scale(1);
+}
+
+.popup.success{ background:#065f46; }
+.popup.error{ background:#7f1d1d; }
+.popup.info{ background:#1e293b; }
+
+.popup.error h3{ color:#ef4444; }
+.popup.success h3{ color:#22c55e; }
+
+.popup button{
+  margin-top:10px;
+  background:#22c55e;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+<h2>24 Hours Investment Plan</h2>
+<div id="plans"></div>
+<div id="activeInvestment" style="margin-top:20px;"></div>
+</div>
+
+<div id="overlay" class="overlay"></div>
+
+<div id="popup" class="popup">
+  <h3 id="popTitle"></h3>
+  <p id="popMsg"></p>
+  <button id="popBtn" style="display:none;"></button>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+import { getDatabase, ref, onValue, update, set, get } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+import { getAuth, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCc637WbfRNZ8-0CN4sEqEnGY27-oAdGiw",
+  authDomain: "betpawa-6ef7e.firebaseapp.com",
+  databaseURL: "https://betpawa-6ef7e-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "betpawa-6ef7e"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const auth = getAuth(app);
+
+setPersistence(auth, browserLocalPersistence);
+
+const planList = [300000,600000,1000000,2500000,5000000];
+
+const DAILY_PERCENT = 0.4;
+const DAYS = 1;
+
+let uid = null;
+
+/* POPUP */
+function showPopup(title,msg,type="info",btnText=null,action=null){
+  const popup = document.getElementById("popup");
+  const overlay = document.getElementById("overlay");
+
+  popup.className = "popup show " + type;
+  overlay.style.display = "block";
+
+  popTitle.innerText = title;
+  popMsg.innerText = msg;
+
+  const btn = document.getElementById("popBtn");
+
+  if(btnText){
+    btn.style.display="block";
+    btn.innerText = btnText;
+    btn.onclick = ()=> action();
+  }else{
+    btn.style.display="none";
+  }
+
+  overlay.onclick = ()=>{
+    popup.classList.remove("show");
+    overlay.style.display = "none";
+  };
+
+  if(!btnText){
+    setTimeout(()=>{
+      popup.classList.remove("show");
+      overlay.style.display = "none";
+    },2000);
+  }
+}
+
+/* ✅ RENDER (FIXED) */
+function renderPlans(){
+  let html = "";
+  planList.forEach(amount=>{
+    html += `
+      <div class="plan">
+        <h3>${amount.toLocaleString()} UGX</h3>
+        <p>Duration: 24 Hours</p>
+        <p>Profit: 40%</p>
+        <button onclick="preview(${amount})">Invest Now</button>
+      </div>
+    `;
+  });
+  document.getElementById("plans").innerHTML = html;
+}
+
+/* ✅ PROFIT PREVIEW */
+window.preview = (amount)=>{
+  const profit = amount * DAILY_PERCENT;
+  const total = amount + profit;
+
+  showPopup(
+    "Confirm Investment",
+    `Invest: ${amount.toLocaleString()} UGX\nProfit: ${profit.toLocaleString()} UGX\nTotal Return: ${total.toLocaleString()} UGX`,
+    "info",
+    "Confirm",
+    ()=> invest(amount)
+  );
+};
+
+/* INVEST */
+async function invest(amount){
+  const userRef = ref(db,"users/"+uid);
+  const investRef = ref(db,"investments/"+uid+"/24hrs");
+
+  const user = (await get(userRef)).val();
+  const existing = (await get(investRef)).val();
+
+  let main = user?.balance || 0;
+
+  if(main < amount){
+    showPopup(
+      "Insufficient Balance",
+      "Want to make a deposit?",
+      "error",
+      "Confirm",
+      ()=> window.location.href="deposit.html"
+    );
+    return;
+  }
+
+  if(existing && existing.daysClaimed < DAYS){
+    showPopup("Notice","You already have an active investment","info");
+    return;
+  }
+
+  const profit = amount * DAILY_PERCENT;
+
+  await set(investRef,{
+    amount,
+    total: profit,
+    remaining: profit,
+    startTime: Date.now(),
+    lastClaim: 0,
+    daysClaimed: 0
+  });
+
+  await update(userRef,{
+    balance: main - amount,
+    lockedBalance: (user?.lockedBalance||0) + profit
+  });
+
+  showPopup("Success","Investment activated","success");
+}
+
+/* SHOW */
+function showInvestment(data){
+  if(!data){
+    activeInvestment.innerHTML = "";
+    return;
+  }
+
+  let finished = data.daysClaimed >= DAYS;
+
+  activeInvestment.innerHTML = `
+    <div class="plan">
+      <h3>Active Investment</h3>
+      <p>Amount: ${data.amount.toLocaleString()} UGX</p>
+      <p>Profit: ${Math.floor(data.total)} UGX</p>
+      <p>Status: ${finished ? "Completed" : "Running"}</p>
+
+      <button class="claim-btn" onclick="claim()">Receive Earnings</button>
+    </div>
+  `;
+}
+
+/* CLAIM */
+window.claim = async ()=>{
+  const investRef = ref(db,"investments/"+uid+"/24hrs");
+  const userRef = ref(db,"users/"+uid);
+
+  const data = (await get(investRef)).val();
+
+  if(!data) return;
+
+  if(Date.now() - data.startTime < 86400000){
+    showPopup("Wait","Come back after 24 hours","info");
+    return;
+  }
+
+  if(data.daysClaimed >= 1){
+    showPopup("Done","Already claimed","success");
+    return;
+  }
+
+  await update(investRef,{
+    daysClaimed: 1,
+    remaining: 0
+  });
+
+  const u = (await get(userRef)).val();
+
+  await update(userRef,{
+    balance: (u.balance||0) + data.total,
+    lockedBalance: (u.lockedBalance||0) - data.total
+  });
+
+  showPopup("Success","Profit received","success");
+};
+
+/* AUTH */
+onAuthStateChanged(auth,(user)=>{
+  renderPlans(); // ✅ always render immediately
+
+  if(user){
+    uid = user.uid;
+
+    const investRef = ref(db,"investments/"+uid+"/24hrs");
+
+    onValue(investRef,(snap)=>{
+      showInvestment(snap.val());
+    });
+  }
+});
+</script>
+
+</body>
+</html>
