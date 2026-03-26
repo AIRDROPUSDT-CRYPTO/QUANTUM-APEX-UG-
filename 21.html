@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>21 Days Plan</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+
+<style>
+*{
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
+  font-family:'Poppins',sans-serif;
+}
+
+body{
+  background:linear-gradient(135deg,#020617,#0f172a,#1e293b);
+  color:#fff;
+}
+
+.container{
+  padding:20px;
+}
+
+.plan{
+  background:linear-gradient(135deg,#1e293b,#020617);
+  padding:18px;
+  border-radius:14px;
+  margin-bottom:15px;
+}
+
+.plan h3{
+  color:#38bdf8;
+}
+
+.plan p{
+  font-size:13px;
+  color:#94a3b8;
+  margin:4px 0;
+}
+
+button{
+  width:100%;
+  padding:10px;
+  border:none;
+  border-radius:25px;
+  margin-top:10px;
+  background:linear-gradient(45deg,#38bdf8,#6366f1);
+  color:#fff;
+  cursor:pointer;
+}
+
+.claim-btn{
+  background:#22c55e;
+}
+
+.disabled{
+  opacity:0.5;
+  pointer-events:none;
+}
+
+/* POPUP */
+.popup{
+  position:fixed;
+  top:50%;
+  left:50%;
+  transform:translate(-50%,-50%) scale(0.9);
+  padding:20px;
+  border-radius:12px;
+  text-align:center;
+  width:280px;
+  opacity:0;
+  transition:0.3s;
+  z-index:999;
+}
+
+.popup.success{ background:#052e16; border:2px solid #22c55e; }
+.popup.error{ background:#2b0a0a; border:2px solid #ef4444; }
+.popup.warning{ background:#2e1f04; border:2px solid #f59e0b; }
+.popup.info{ background:#0c1e3a; border:2px solid #38bdf8; }
+
+.popup.show{
+  opacity:1;
+  transform:translate(-50%,-50%) scale(1);
+}
+
+.popup.success h3{ color:#4ade80; }
+.popup.error h3{ color:#f87171; }
+.popup.warning h3{ color:#facc15; }
+.popup.info h3{ color:#38bdf8; }
+
+.popup p{
+  margin-top:6px;
+  color:#e2e8f0;
+}
+
+.popup button{
+  margin-top:12px;
+  background:#22c55e;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h2>21 Days Investment Plan</h2>
+
+<div id="plans"></div>
+
+<div id="activeInvestment" style="margin-top:20px;"></div>
+
+</div>
+
+<div id="popup" class="popup">
+  <h3 id="popTitle"></h3>
+  <p id="popMsg"></p>
+  <button id="popBtn" style="display:none;"></button>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+import { getDatabase, ref, onValue, update, set, get } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+import { getAuth, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCc637WbfRNZ8-0CN4sEqEnGY27-oAdGiw",
+  authDomain: "betpawa-6ef7e.firebaseapp.com",
+  databaseURL: "https://betpawa-6ef7e-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "betpawa-6ef7e"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const auth = getAuth(app);
+
+setPersistence(auth, browserLocalPersistence);
+
+const plans = [10000,50000,200000,500000,1000000,5000000];
+
+const DAILY_PERCENT = 0.0476; // ~100% in 21 days
+const DAYS = 21;
+
+let uid = null;
+
+/* POPUP */
+function showPopup(title,msg,btnText=null,action=null){
+  const popup = document.getElementById("popup");
+  popup.className = "popup";
+
+  if(title.toLowerCase().includes("success")){
+    popup.classList.add("success");
+  }else if(title.toLowerCase().includes("insufficient") || title.toLowerCase().includes("error")){
+    popup.classList.add("error");
+  }else if(title.toLowerCase().includes("wait") || title.toLowerCase().includes("notice")){
+    popup.classList.add("warning");
+  }else{
+    popup.classList.add("info");
+  }
+
+  popup.classList.add("show");
+
+  popTitle.innerText = title;
+  popMsg.innerText = msg;
+
+  const btn = document.getElementById("popBtn");
+
+  if(btnText){
+    btn.style.display="block";
+    btn.innerText = btnText;
+    btn.onclick = (e)=>{
+      e.stopPropagation();
+      action();
+    };
+  }else{
+    btn.style.display="none";
+  }
+
+  document.onclick = ()=>{
+    popup.classList.remove("show");
+    document.onclick = null;
+  };
+
+  popup.onclick = (e)=> e.stopPropagation();
+
+  if(!btnText){
+    setTimeout(()=> popup.classList.remove("show"),2000);
+  }
+}
+
+/* RENDER */
+function renderPlans(){
+  let html="";
+  plans.forEach(amount=>{
+    html += `
+      <div class="plan">
+        <h3>${amount.toLocaleString()} UGX</h3>
+        <p>Duration: 21 Days</p>
+        <p>Daily Profit: 4.76%</p>
+        <button onclick="invest(${amount})">Invest Now</button>
+      </div>
+    `;
+  });
+  document.getElementById("plans").innerHTML = html;
+}
+
+/* INVEST */
+window.invest = async (amount)=>{
+  if(!uid){
+    showPopup("Wait","Loading user...");
+    return;
+  }
+
+  const userRef = ref(db,"users/"+uid);
+  const investRef = ref(db,"investments/"+uid+"/21days");
+
+  const user = (await get(userRef)).val();
+  const existing = (await get(investRef)).val();
+
+  let main = user?.balance || 0;
+
+  if(main < amount){
+    showPopup("Insufficient Balance","Want to make a deposit?","Confirm",()=>window.location.href="deposit.html");
+    return;
+  }
+
+  if(existing && existing.daysClaimed < DAYS){
+    showPopup("Notice","You already have an active investment");
+    return;
+  }
+
+  const daily = amount * DAILY_PERCENT;
+  const total = daily * DAYS;
+
+  await set(investRef,{
+    amount,daily,total,
+    remaining:total,
+    startTime:Date.now(),
+    lastClaim:0,
+    daysClaimed:0
+  });
+
+  await update(userRef,{
+    balance: main - amount,
+    lockedBalance: (user.lockedBalance||0) + total
+  });
+
+  showPopup("Success","Investment activated");
+};
+
+/* SHOW */
+function showInvestment(data){
+  if(!data){
+    activeInvestment.innerHTML="";
+    return;
+  }
+
+  let canClaim = (Date.now()-data.lastClaim)>=86400000;
+  let finished = data.daysClaimed>=DAYS;
+
+  activeInvestment.innerHTML=`
+  <div class="plan">
+    <h3>Active Investment</h3>
+    <p>Amount: ${data.amount.toLocaleString()} UGX</p>
+    <p>Daily: ${Math.floor(data.daily)} UGX</p>
+    <p>Days: ${data.daysClaimed}/${DAYS}</p>
+    <p>Remaining: ${Math.floor(data.remaining)} UGX</p>
+    <button class="claim-btn ${(!canClaim||finished)?"disabled":""}" onclick="claim()">Receive Today's Earnings</button>
+  </div>`;
+}
+
+/* CLAIM */
+window.claim = async ()=>{
+  if(!uid) return showPopup("Wait","Loading user...");
+
+  const investRef = ref(db,"investments/"+uid+"/21days");
+  const userRef = ref(db,"users/"+uid);
+
+  const data = (await get(investRef)).val();
+  if(!data) return;
+
+  if(Date.now()-data.lastClaim<86400000) return showPopup("Wait","Come back after 24 hours");
+  if(data.daysClaimed>=DAYS) return showPopup("Done","Investment completed");
+
+  let daily=Math.floor(data.daily);
+
+  await update(investRef,{
+    lastClaim:Date.now(),
+    daysClaimed:data.daysClaimed+1,
+    remaining:data.remaining-daily
+  });
+
+  const user=(await get(userRef)).val();
+
+  await update(userRef,{
+    balance:(user.balance||0)+daily,
+    lockedBalance:(user.lockedBalance||0)-daily
+  });
+
+  showPopup("Success","Daily earnings received");
+};
+
+/* AUTH */
+onAuthStateChanged(auth,(user)=>{
+  if(user){
+    uid=user.uid;
+    renderPlans();
+
+    onValue(ref(db,"investments/"+uid+"/21days"),snap=>{
+      showInvestment(snap.val());
+    });
+  }else{
+    renderPlans();
+  }
+});
+</script>
+
+</body>
+</html>
