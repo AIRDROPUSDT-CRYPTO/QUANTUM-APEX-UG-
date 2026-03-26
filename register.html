@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Register | Quantum Apex Ug</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+
+<style>
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Poppins', sans-serif;
+}
+
+body {
+  background: linear-gradient(135deg,#020617,#0f172a,#1e293b);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  color: #fff;
+}
+
+.container {
+  background: rgba(255,255,255,0.05);
+  padding: 30px;
+  border-radius: 15px;
+  width: 360px;
+  backdrop-filter: blur(14px);
+  text-align: center;
+}
+
+h2 {
+  margin-bottom: 20px;
+  color: #38bdf8;
+}
+
+input {
+  width: 100%;
+  padding: 12px;
+  margin: 6px 0;
+  border-radius: 8px;
+  border: none;
+  outline: none;
+}
+
+.phone-box {
+  display: flex;
+  align-items: center;
+  background: #fff;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.phone-box span {
+  padding: 0 10px;
+  color: #000;
+  font-weight: bold;
+}
+
+.phone-box input {
+  border: none;
+  flex: 1;
+  padding: 12px;
+}
+
+.register-btn {
+  width: 100%;
+  padding: 12px;
+  margin-top: 10px;
+  border: none;
+  border-radius: 30px;
+  background: linear-gradient(45deg,#38bdf8,#6366f1);
+  color: #fff;
+  cursor: pointer;
+}
+
+.links {
+  margin-top: 12px;
+}
+
+.links a {
+  font-size: 13px;
+  color: #94a3b8;
+  text-decoration: none;
+}
+
+.links a:hover {
+  color: #38bdf8;
+}
+
+.popup {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.85);
+  background: #020617;
+  padding: 20px 30px;
+  border-radius: 12px;
+  text-align: center;
+  opacity: 0;
+  transition: 0.25s ease;
+  z-index: 1000;
+}
+
+.popup.show {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.popup.success {
+  border: 2px solid #22c55e;
+}
+
+.popup.error {
+  border: 2px solid #ef4444;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+  <h2>Create Account</h2>
+
+  <input type="text" id="name" placeholder="Full Name">
+  <input type="text" id="username" placeholder="Username">
+
+  <div class="phone-box">
+    <span>🇺🇬 +256</span>
+    <input type="number" id="phone" placeholder="Phone Number">
+  </div>
+
+  <input type="email" id="email" placeholder="Email Address">
+  <input type="password" id="password" placeholder="Password">
+  <input type="password" id="confirmPassword" placeholder="Confirm Password">
+
+  <button class="register-btn" onclick="register()">Create Account</button>
+
+  <div class="links">
+    <a href="login.html">Already have an account?</a>
+  </div>
+</div>
+
+<div id="popup" class="popup">
+  <p id="popupMsg"></p>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+import { 
+  getAuth, 
+  createUserWithEmailAndPassword 
+} from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
+
+import { 
+  getDatabase, 
+  ref, 
+  set 
+} from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCc637WbfRNZ8-0CN4sEqEnGY27-oAdGiw",
+  authDomain: "betpawa-6ef7e.firebaseapp.com",
+  databaseURL: "https://betpawa-6ef7e-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "betpawa-6ef7e",
+  storageBucket: "betpawa-6ef7e.firebasestorage.app",
+  messagingSenderId: "908050081607",
+  appId: "1:908050081607:web:db6e861fca63df78584e62",
+  measurementId: "G-C7M7HWTD01"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getDatabase(app);
+
+const params = new URLSearchParams(window.location.search);
+const refUser = params.get("ref") || "";
+
+/* POPUP */
+function showPopup(message, type){
+  const popup = document.getElementById("popup");
+  popup.className = "popup show " + type;
+  document.getElementById("popupMsg").innerText = message;
+
+  setTimeout(()=>{
+    popup.classList.remove("show");
+  },2200);
+}
+
+/* REGISTER */
+window.register = function(){
+  let name = document.getElementById("name").value.trim();
+  let username = document.getElementById("username").value.trim();
+  let phone = document.getElementById("phone").value.trim();
+  let email = document.getElementById("email").value.trim();
+  let password = document.getElementById("password").value;
+  let confirmPassword = document.getElementById("confirmPassword").value;
+
+  if(!name || !username || !phone || !email || !password || !confirmPassword){
+    return showPopup("Fill in the required fields","error");
+  }
+
+  if(password !== confirmPassword){
+    return showPopup("Passwords do not match","error");
+  }
+
+  createUserWithEmailAndPassword(auth, email, password)
+  .then((userCredential) => {
+
+    const user = userCredential.user;
+
+    set(ref(db, "users/" + user.uid), {
+      name,
+      username,
+      phone: "+256" + phone,
+      email,
+      referral: refUser,
+      balance: 0,
+      createdAt: Date.now()
+    });
+
+    showPopup("Account created successfully","success");
+
+    setTimeout(()=>{
+      window.location.href = "dashboard.html";
+    },1200);
+
+  })
+  .catch((error) => {
+
+    let msg = "Unable to create account";
+
+    if(error.code === "auth/email-already-in-use"){
+      msg = "Email already exists";
+    }
+
+    showPopup(msg,"error");
+  });
+}
+</script>
+
+</body>
+</html>
