@@ -8,12 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
 
 <style>
-*{
-  margin:0;
-  padding:0;
-  box-sizing:border-box;
-  font-family:'Poppins',sans-serif;
-}
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Poppins',sans-serif;}
 
 body{
   background:linear-gradient(135deg,#020617,#020617,#0f172a);
@@ -30,24 +25,44 @@ body{
 }
 
 /* CONTAINER */
-.container{
-  padding:20px;
+.container{padding:20px;}
+
+.section-title{
+  margin:20px 0 10px;
+  font-size:14px;
+  color:#38bdf8;
 }
 
-/* CARD */
+/* 🔥 FINTECH CARD */
 .card{
-  background:linear-gradient(135deg,#0f172a,#1e293b);
+  position:relative;
+  background:linear-gradient(135deg,#0f172a,#020617);
   padding:18px;
   border-radius:18px;
-  margin-bottom:15px;
-  box-shadow:0 15px 35px rgba(0,0,0,0.5);
-  animation:fadeIn 0.4s ease;
+  margin-bottom:14px;
+  overflow:hidden;
+
+  box-shadow:
+    0 0 0 1px rgba(56,189,248,0.1),
+    0 0 30px rgba(56,189,248,0.15),
+    inset 0 0 25px rgba(255,255,255,0.02);
 }
 
-/* ANIMATION */
-@keyframes fadeIn{
-  from{opacity:0; transform:translateY(10px);}
-  to{opacity:1; transform:translateY(0);}
+/* glowing border */
+.card::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  border-radius:18px;
+  padding:1px;
+  background:linear-gradient(120deg,#38bdf8,#6366f1,#22c55e);
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;
+  mask-composite:exclude;
+  opacity:0.4;
+  pointer-events:none;
 }
 
 /* HEADER */
@@ -98,7 +113,7 @@ body{
 /* EMPTY */
 .empty{
   text-align:center;
-  margin-top:60px;
+  margin-top:40px;
   color:#64748b;
 }
 </style>
@@ -108,16 +123,14 @@ body{
 
 <div class="topbar">My Investments</div>
 
-<div class="container" id="investmentContainer">
-  <div class="empty">No active investments</div>
-</div>
+<div class="container" id="container"></div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
 
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+/* CONFIG */
 const firebaseConfig = {
   apiKey: "AIzaSyCc637WbfRNZ8-0CN4sEqEnGY27-oAdGiw",
   authDomain: "betpawa-6ef7e.firebaseapp.com",
@@ -125,123 +138,143 @@ const firebaseConfig = {
   projectId: "betpawa-6ef7e",
   storageBucket: "betpawa-6ef7e.firebasestorage.app",
   messagingSenderId: "908050081607",
-  appId: "1:908050081607:web:db6e861fca63df78584e62",
-  measurementId: "G-C7M7HWTD01"
+  appId: "1:908050081607:web:db6e861fca63df78584e62"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const auth = getAuth(app);
 
-const container = document.getElementById("investmentContainer");
+const container = document.getElementById("container");
 
 /* PLAN DURATIONS */
 const durations = {
   "24hrs": 1,
-  "3": 3,
-  "7": 7,
-  "12": 12,
-  "21": 21,
-  "36": 36
+  "3days": 3,
+  "7days": 7,
+  "12days": 12,
+  "21days": 21,
+  "36days": 36
 };
 
-/* FORMAT MONEY */
-function formatMoney(amount){
-  return Number(amount).toLocaleString() + " UGX";
+/* FORMAT */
+function formatMoney(a){
+  return Number(a).toLocaleString()+" UGX";
 }
 
-/* COUNTDOWN FUNCTION */
-function getRemaining(endTime){
-  let now = Date.now();
-  let diff = endTime - now;
+/* ⏱ COUNTDOWN (REAL TIME, NO RESET) */
+function getRemaining(end){
+  let diff = end - Date.now();
 
   if(diff <= 0) return "Completed";
 
-  let days = Math.floor(diff / (1000*60*60*24));
-  let hours = Math.floor((diff / (1000*60*60)) % 24);
-  let minutes = Math.floor((diff / (1000*60)) % 60);
+  let d=Math.floor(diff/86400000);
+  let h=Math.floor((diff%86400000)/3600000);
+  let m=Math.floor((diff%3600000)/60000);
+  let s=Math.floor((diff%60000)/1000);
 
-  return `${days}d ${hours}h ${minutes}m`;
+  return `${d}d ${h}h ${m}m ${s}s`;
+}
+
+/* CREATE CARD */
+function createCard(planName, inv){
+
+  let days = durations[planName] || 0;
+
+  // 🔥 IMPORTANT: uses stored startTime → no reset
+  let end = inv.startTime + (days * 86400000);
+
+  let done = Date.now() >= end;
+
+  let div = document.createElement("div");
+  div.className="card";
+
+  let id = "cd-" + Math.random().toString(36).slice(2);
+
+  div.innerHTML=`
+    <div class="header">
+      <div class="plan">${planName.replace("days"," Days").replace("hrs"," Hours")}</div>
+      <div class="status ${done?'completed':'active'}">
+        ${done?'Completed':'Active'}
+      </div>
+    </div>
+
+    <div class="details">
+      Amount: ${formatMoney(inv.amount)}
+    </div>
+
+    <div class="countdown" id="${id}">
+      ${done ? "Completed" : getRemaining(end)}
+    </div>
+  `;
+
+  /* 🔥 LIVE TIMER (EVERY SECOND) */
+  if(!done){
+    setInterval(()=>{
+      let el=document.getElementById(id);
+      if(el){
+        let txt = getRemaining(end);
+        el.innerText = txt;
+
+        // auto switch to completed UI
+        if(txt === "Completed"){
+          location.reload();
+        }
+      }
+    },1000);
+  }
+
+  return {div, done};
 }
 
 /* RENDER */
-function render(data){
-  container.innerHTML = "";
+function render(allData){
 
-  if(data.length === 0){
-    container.innerHTML = '<div class="empty">No active investments</div>';
-    return;
-  }
+  container.innerHTML="";
 
-  data.sort((a,b)=>b.createdAt - a.createdAt);
+  let activeSection=document.createElement("div");
+  let completedSection=document.createElement("div");
 
-  data.forEach(inv => {
+  activeSection.innerHTML='<div class="section-title">Ongoing Investments</div>';
+  completedSection.innerHTML='<div class="section-title">Completed Investments</div>';
 
-    let days = durations[inv.plan] || 0;
-    let endTime = inv.createdAt + (days * 24 * 60 * 60 * 1000);
+  let hasActive=false, hasCompleted=false;
 
-    let isComplete = Date.now() >= endTime;
+  Object.keys(allData).forEach(planName=>{
+    let planData = allData[planName];
 
-    let div = document.createElement("div");
-    div.className = "card";
+    Object.values(planData).forEach(inv=>{
+      let {div, done} = createCard(planName, inv);
 
-    div.innerHTML = `
-      <div class="header">
-        <div class="plan">${inv.plan} Days Plan</div>
-        <div class="status ${isComplete ? 'completed' : 'active'}">
-          ${isComplete ? 'Completed' : 'Active'}
-        </div>
-      </div>
-
-      <div class="details">
-        Amount: ${formatMoney(inv.amount)}
-      </div>
-
-      <div class="countdown" id="cd-${inv.id}">
-        ${isComplete ? "Completed" : getRemaining(endTime)}
-      </div>
-    `;
-
-    container.appendChild(div);
-
-    /* LIVE COUNTDOWN */
-    if(!isComplete){
-      setInterval(()=>{
-        document.getElementById("cd-"+inv.id).innerText = getRemaining(endTime);
-      },60000);
-    }
-
-  });
-}
-
-/* REALTIME */
-onAuthStateChanged(auth, user => {
-  if(!user){
-    window.location.href = "login.html";
-    return;
-  }
-
-  onValue(ref(db,"investments"), snap => {
-
-    let list = [];
-
-    snap.forEach(child => {
-      let d = child.val();
-
-      if(d.userId === user.uid){
-        list.push({
-          id: child.key,
-          plan: d.plan,
-          amount: d.amount,
-          createdAt: d.createdAt
-        });
+      if(done){
+        completedSection.appendChild(div);
+        hasCompleted=true;
+      }else{
+        activeSection.appendChild(div);
+        hasActive=true;
       }
     });
-
-    render(list);
-
   });
 
+  if(hasActive) container.appendChild(activeSection);
+  if(hasCompleted) container.appendChild(completedSection);
+
+  if(!hasActive && !hasCompleted){
+    container.innerHTML='<div class="empty">No investments found</div>';
+  }
+}
+
+/* 🔥 REALTIME FIREBASE SYNC */
+onAuthStateChanged(auth,user=>{
+  if(!user){
+    window.location.href="login.html";
+    return;
+  }
+
+  onValue(ref(db,"investments/"+user.uid),snap=>{
+    let data = snap.val() || {};
+    render(data);
+  });
 });
 </script>
 
