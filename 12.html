@@ -15,7 +15,6 @@ body{
   color:#fff;
 }
 
-/* MAIN */
 .container{padding:20px;}
 
 .plan{
@@ -39,15 +38,12 @@ button{
   color:#fff;
   cursor:pointer;
   font-weight:600;
-  transition:0.3s;
 }
-
-button:active{transform:scale(0.97);}
 
 .claim-btn{background:#22c55e;}
 .disabled{opacity:0.4;pointer-events:none;}
 
-/* 🔥 PREMIUM POPUP */
+/* POPUP */
 .overlay{
   position:fixed;
   inset:0;
@@ -74,22 +70,6 @@ button:active{transform:scale(0.97);}
   padding:22px;
   text-align:center;
   box-shadow:0 0 30px rgba(56,189,248,0.2);
-  transform:scale(0.8);
-  transition:0.3s;
-}
-
-.overlay.show .popup{
-  transform:scale(1);
-}
-
-.popup h3{
-  margin-bottom:8px;
-  font-weight:600;
-}
-
-.popup p{
-  font-size:13px;
-  color:#94a3b8;
 }
 
 .popup.success{border:1px solid #22c55e;}
@@ -110,7 +90,6 @@ button:active{transform:scale(0.97);}
 <div id="plans"></div>
 </div>
 
-<!-- POPUP -->
 <div id="overlay" class="overlay">
   <div id="popup" class="popup">
     <h3 id="popTitle"></h3>
@@ -132,7 +111,7 @@ const popTitle = document.getElementById("popTitle");
 const popMsg = document.getElementById("popMsg");
 const popBtn = document.getElementById("popBtn");
 
-/* FIREBASE */
+/* ✅ CORRECT FIREBASE CONFIG */
 const firebaseConfig = {
   apiKey: "AIzaSyCc637WbfRNZ8-0CN4sEqEnGY27-oAdGiw",
   authDomain: "betpawa-6ef7e.firebaseapp.com",
@@ -141,6 +120,7 @@ const firebaseConfig = {
   storageBucket: "betpawa-6ef7e.firebasestorage.app",
   messagingSenderId: "908050081607",
   appId: "1:908050081607:web:db6e861fca63df78584e62",
+  measurementId: "G-C7M7HWTD01"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -153,69 +133,66 @@ const DAILY_PERCENT = 0.0917;
 const DAYS = 12;
 
 let uid=null;
+let cachedData={};
 
-/* ✅ POPUP */
+/* POPUP */
 function showPopup(title,msg,type="info",btnText=null,action=null){
   popTitle.innerText = title;
   popMsg.innerText = msg;
-
-  popup.className = "popup " + type;
+  popup.className = "popup "+type;
   overlay.classList.add("show");
 
   if(btnText){
     popBtn.style.display="block";
     popBtn.innerText=btnText;
-    popBtn.onclick = action;
+    popBtn.onclick=action;
   }else{
     popBtn.style.display="none";
     setTimeout(()=>overlay.classList.remove("show"),2000);
   }
 }
 
-/* CLOSE ON OUTSIDE CLICK */
-overlay.addEventListener("click",(e)=>{
-  if(e.target === overlay){
-    overlay.classList.remove("show");
-  }
-});
+/* CLOSE ON TOUCH */
+overlay.onclick = (e)=>{
+  if(e.target === overlay) overlay.classList.remove("show");
+};
 
 /* TIME */
 function formatTime(ms){
-  if(ms <= 0) return "Ready";
-  let t = Math.floor(ms/1000);
-  let h = Math.floor(t/3600);
-  let m = Math.floor((t%3600)/60);
-  let s = t%60;
+  if(ms<=0) return "Ready";
+  let t=Math.floor(ms/1000);
+  let h=Math.floor(t/3600);
+  let m=Math.floor((t%3600)/60);
+  let s=t%60;
   return `${h}h ${m}m ${s}s`;
 }
 
-/* FIX BAD DATA */
+/* CLEAN DATA */
 function sanitize(data){
   let clean={};
   Object.keys(data).forEach(k=>{
-    if(typeof data[k]==="object" && data[k]!==null){
-      clean[k]=data[k];
-      clean[k].id=k;
+    if(typeof data[k]==="object"){
+      clean[k]={...data[k],id:k};
     }
   });
   return clean;
 }
 
 /* RENDER */
-function renderPlans(investments={}){
+function renderPlans(){
   plansDiv.innerHTML="";
 
   plans.forEach(amount=>{
-    let active = Object.values(investments).find(i=>i.amount===amount);
+    let active = Object.values(cachedData).find(i=>i.amount===amount);
 
     let div=document.createElement("div");
     div.className="plan";
 
     if(active){
-      let finished = active.completed === true;
-      let next = active.lastClaim + 86400000;
-      let remaining = next - Date.now();
-      let canClaim = remaining <= 0;
+      let finished = active.completed;
+      let baseTime = active.lastClaim || active.startTime;
+      let remaining = (baseTime + 86400000) - Date.now();
+      let canClaim = remaining<=0;
 
       div.innerHTML=`
         <h3>${amount.toLocaleString()} UGX</h3>
@@ -226,11 +203,17 @@ function renderPlans(investments={}){
 
       let btn=document.createElement("button");
       btn.className="claim-btn";
-      btn.innerText = finished ? "Completed" : "Receive";
 
-      if(!canClaim || finished) btn.classList.add("disabled");
-
-      btn.onclick = ()=>claim(active.id);
+      if(finished){
+        btn.innerText="Completed";
+        btn.classList.add("disabled");
+      }else if(canClaim){
+        btn.innerText="Receive Today's Earnings";
+        btn.onclick=()=>claim(active.id);
+      }else{
+        btn.innerText="Locked";
+        btn.classList.add("disabled");
+      }
 
       div.appendChild(btn);
 
@@ -243,7 +226,7 @@ function renderPlans(investments={}){
 
       let btn=document.createElement("button");
       btn.innerText="Invest Now";
-      btn.onclick = ()=>invest(amount);
+      btn.onclick=()=>invest(amount);
 
       div.appendChild(btn);
     }
@@ -252,8 +235,18 @@ function renderPlans(investments={}){
   });
 }
 
+/* LIVE TIMER */
+setInterval(renderPlans,1000);
+
 /* INVEST */
 async function invest(amount){
+
+  let exists = Object.values(cachedData).find(i=>i.amount===amount);
+  if(exists){
+    showPopup("Active Plan","You already invested in this plan","info");
+    return;
+  }
+
   const userRef = ref(db,"users/"+uid);
   const user = (await get(userRef)).val();
 
@@ -263,7 +256,7 @@ async function invest(amount){
       "Proceed to deposit?",
       "error",
       "Confirm",
-      ()=> window.location.href="deposit.html"
+      ()=>window.location.href="deposit.html"
     );
     return;
   }
@@ -284,6 +277,7 @@ async function invest(amount){
     total,
     remaining:total,
     lastClaim:0,
+    startTime:Date.now(),
     daysClaimed:0,
     completed:false
   });
@@ -297,9 +291,10 @@ async function claim(id){
   const userRef = ref(db,"users/"+uid);
 
   const data = (await get(investRef)).val();
-  if(!data) return;
 
-  if((Date.now()-data.lastClaim) < 86400000){
+  let baseTime = data.lastClaim || data.startTime;
+
+  if(Date.now() - baseTime < 86400000){
     showPopup("Wait","Come back after 24hrs");
     return;
   }
@@ -330,18 +325,16 @@ onAuthStateChanged(auth,user=>{
   if(user){
     uid=user.uid;
 
-    const investRef = ref(db,"investments/"+uid+"/12days");
-
-    onValue(investRef,snap=>{
-      let clean = sanitize(snap.val() || {});
-      renderPlans(clean);
+    onValue(ref(db,"investments/"+uid+"/12days"),snap=>{
+      cachedData = sanitize(snap.val()||{});
+      renderPlans();
     });
 
   }else{
-    renderPlans({});
+    renderPlans();
   }
 });
 </script>
 
 </body>
-      </html>
+</html>
