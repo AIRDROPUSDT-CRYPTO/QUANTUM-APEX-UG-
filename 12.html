@@ -68,7 +68,7 @@ button{
   background:linear-gradient(45deg,#22c55e,#16a34a);
 }
 
-/* ✅ Notification styles */
+/* Notification */
 .popup{
   width:300px;
   background:#020617;
@@ -78,15 +78,12 @@ button{
   border:1px solid rgba(255,255,255,0.08);
 }
 
-/* success */
 .popup.success{border-color:#22c55e;}
 .popup.success h3{color:#22c55e;}
 
-/* warning */
 .popup.warning{border-color:#facc15;}
 .popup.warning h3{color:#facc15;}
 
-/* info */
 .popup.info{border-color:#38bdf8;}
 .popup.info h3{color:#38bdf8;}
 
@@ -125,6 +122,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase
 import { getDatabase, ref, onValue, runTransaction } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
 
+/* CONFIG (UNCHANGED) */
 const firebaseConfig = {
   apiKey: "AIzaSyCc637WbfRNZ8-0CN4sEqEnGY27-oAdGiw",
   authDomain: "betpawa-6ef7e.firebaseapp.com",
@@ -146,13 +144,14 @@ const DAYS=12;
 
 let user=null;
 let investments={};
+let userData=null; // ✅ REALTIME USER DATA
 
 const overlay=document.getElementById("overlay");
 const popupBox=document.getElementById("popupBox");
 const popTitle=document.getElementById("popTitle");
 const popMsg=document.getElementById("popMsg");
 
-/* ✅ IMPROVED NOTIFICATION */
+/* POPUP */
 function showPopup(type,title,msg){
   popupBox.className="popup "+type;
   popTitle.innerText=title;
@@ -167,6 +166,7 @@ function format(ms){
   return `${Math.floor(s/3600)}h ${Math.floor((s%3600)/60)}m ${s%60}s`;
 }
 
+/* RENDER */
 function render(){
   const box=document.getElementById("plans");
   box.innerHTML="";
@@ -194,11 +194,8 @@ function render(){
       btn.className="claim-btn";
       btn.innerText="Receive Daily Earnings";
 
-      if(can){
-        btn.onclick=()=>claim(amount);
-      }else{
-        btn.style.opacity="0.5";
-      }
+      if(can) btn.onclick=()=>claim(amount);
+      else btn.style.opacity="0.5";
 
       div.appendChild(btn);
 
@@ -223,25 +220,27 @@ function render(){
   });
 }
 
-/* INVEST */
+/* ✅ FIXED INVEST */
 async function invest(amount){
-  if(!user) return showPopup("info","Session","Please wait...");
+
+  if(!user || !userData){
+    return showPopup("info","Please wait","Loading account...");
+  }
 
   const uid=user.uid;
+
+  if((userData.balance||0) < amount){
+    return showPopup("warning","Low Balance","Top up your account to continue");
+  }
+
   const total=amount*DAILY_PERCENT*DAYS;
 
-  let ok=false;
-
   await runTransaction(ref(db,"users/"+uid),u=>{
-    if(!u || (u.balance||0)<amount) return;
-    u.balance-=amount;
-    u.lockedBalance=(u.lockedBalance||0)+total;
-    ok=true;
+    if(!u) return;
+    u.balance -= amount;
+    u.lockedBalance = (u.lockedBalance||0) + total;
     return u;
   });
-
-  /* ✅ FIXED MESSAGE */
-  if(!ok) return showPopup("warning","Insufficient Funds","Your balance is too low for this investment");
 
   await runTransaction(ref(db,"investments/"+uid+"/12days/"+amount),d=>{
     if(d) return;
@@ -280,7 +279,7 @@ async function claim(amount){
     return d;
   });
 
-  if(!ok) return showPopup("info","Please wait","Not yet time to claim");
+  if(!ok) return showPopup("info","Please wait","Not yet time");
 
   await runTransaction(ref(db,"users/"+uid),u=>{
     u.balance+=pay;
@@ -291,10 +290,18 @@ async function claim(amount){
   showPopup("success","Success","Earnings received");
 }
 
+/* 🔥 REALTIME SYNC */
 onAuthStateChanged(auth,u=>{
   user=u;
 
   if(u){
+
+    /* ✅ USER DATA SYNC (THIS WAS MISSING) */
+    onValue(ref(db,"users/"+u.uid),snap=>{
+      userData = snap.val() || {};
+    });
+
+    /* INVESTMENTS */
     onValue(ref(db,"investments/"+u.uid+"/12days"),snap=>{
       let raw=snap.val()||{};
       investments={};
@@ -303,6 +310,7 @@ onAuthStateChanged(auth,u=>{
       });
       render();
     });
+
   }else{
     render();
   }
@@ -312,4 +320,4 @@ setInterval(render,1000);
 </script>
 
 </body>
-  </html>
+</html>
