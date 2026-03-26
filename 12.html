@@ -17,7 +17,6 @@ body{
 
 .container{padding:20px;}
 
-/* 🔥 FINTECH CARD */
 .plan{
   background:linear-gradient(135deg,#0f172a,#020617);
   padding:18px;
@@ -31,7 +30,6 @@ body{
   overflow:hidden;
 }
 
-/* glow border */
 .plan::before{
   content:"";
   position:absolute;
@@ -59,24 +57,10 @@ body{
   margin:4px 0;
 }
 
-/* 🔥 VALUE COLORS */
-.amount-green{
-  color:#22c55e;
-  font-weight:700;
-  text-shadow:0 0 8px rgba(34,197,94,0.5);
-}
-
-.amount-blue{
-  color:#38bdf8;
-  font-weight:700;
-  text-shadow:0 0 8px rgba(56,189,248,0.5);
-}
-
-.amount-purple{
-  color:#a78bfa;
-  font-weight:700;
-  text-shadow:0 0 8px rgba(167,139,250,0.5);
-}
+.amount-green{color:#22c55e;font-weight:700;}
+.amount-blue{color:#38bdf8;font-weight:700;}
+.amount-purple{color:#a78bfa;font-weight:700;}
+.amount-yellow{color:#facc15;font-weight:700;}
 
 button{
   width:100%;
@@ -88,12 +72,10 @@ button{
   color:#fff;
   cursor:pointer;
   font-weight:600;
-  box-shadow:0 5px 15px rgba(99,102,241,0.3);
 }
 
 .claim-btn{
   background:linear-gradient(45deg,#22c55e,#16a34a);
-  box-shadow:0 5px 15px rgba(34,197,94,0.3);
 }
 
 .disabled{
@@ -125,12 +107,7 @@ button{
   border-radius:18px;
   padding:20px;
   text-align:center;
-  box-shadow:0 0 30px rgba(0,0,0,0.6);
 }
-
-.popup.success{border:1px solid #22c55e;}
-.popup.error{border:1px solid #ef4444;}
-.popup.info{border:1px solid #38bdf8;}
 </style>
 </head>
 
@@ -142,7 +119,7 @@ button{
 </div>
 
 <div id="overlay" class="overlay">
-  <div id="popup" class="popup">
+  <div class="popup">
     <h3 id="popTitle"></h3>
     <p id="popMsg"></p>
   </div>
@@ -153,7 +130,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase
 import { getDatabase, ref, onValue, runTransaction, set } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
 
-/* FIREBASE */
 const firebaseConfig = {
   apiKey: "AIzaSyCc637WbfRNZ8-0CN4sEqEnGY27-oAdGiw",
   authDomain: "betpawa-6ef7e.firebaseapp.com",
@@ -168,7 +144,6 @@ const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const auth = getAuth(app);
 
-/* CONFIG */
 const plans = [150000,500000,1000000,5000000];
 const DAILY_PERCENT = 0.0917;
 const DAYS = 12;
@@ -176,19 +151,17 @@ const DAYS = 12;
 let uid=null;
 let investments={};
 
-/* POPUP */
 const overlay=document.getElementById("overlay");
 const popTitle=document.getElementById("popTitle");
 const popMsg=document.getElementById("popMsg");
 
-function showPopup(title,msg,type="info"){
+function showPopup(title,msg){
   popTitle.innerText=title;
   popMsg.innerText=msg;
   overlay.classList.add("show");
   setTimeout(()=>overlay.classList.remove("show"),2000);
 }
 
-/* TIME */
 function formatTime(ms){
   if(ms<=0) return "Ready to claim";
   let t=Math.floor(ms/1000);
@@ -242,15 +215,26 @@ function render(){
 
     }else{
 
+      let expected = amount * DAILY_PERCENT * DAYS;
+
       div.innerHTML=`
         <h3>${amount.toLocaleString()} UGX</h3>
-        <p>Duration: 12 Days</p>
-        <p>Daily Profit: 9.17%</p>
+        <p>Duration: <span class="amount-blue">${DAYS} Days</span></p>
+        <p>Daily Profit: <span class="amount-green">${(DAILY_PERCENT*100).toFixed(2)}%</span></p>
+        <p>Expected Payout: <span class="amount-purple">${Math.floor(expected)} UGX</span></p>
       `;
 
       let btn=document.createElement("button");
       btn.innerText="Invest Now";
-      btn.onclick=()=>invest(amount);
+
+      // 🔥 FIXED BUTTON HANDLER
+      btn.onclick=async ()=>{
+        btn.classList.add("disabled");
+        btn.innerText="Processing...";
+        await invest(amount);
+        btn.classList.remove("disabled");
+        btn.innerText="Invest Now";
+      };
 
       div.appendChild(btn);
     }
@@ -261,25 +245,37 @@ function render(){
 
 setInterval(render,1000);
 
-/* INVEST (UNCHANGED) */
+/* FIXED INVEST */
 async function invest(amount){
+
+  if(!uid){
+    showPopup("Please wait","User not ready");
+    return;
+  }
+
   const path="investments/"+uid+"/12days/"+amount;
+
   let created=false;
 
-  await runTransaction(ref(db,path),data=>{
-    if(data) return;
-    created=true;
-    return {
-      amount,
-      daily:amount*DAILY_PERCENT,
-      total:amount*DAILY_PERCENT*DAYS,
-      remaining:amount*DAILY_PERCENT*DAYS,
-      lastClaim:0,
-      startTime:Date.now(),
-      daysClaimed:0,
-      completed:false
-    };
-  });
+  try{
+    await runTransaction(ref(db,path),data=>{
+      if(data) return;
+      created=true;
+      return {
+        amount,
+        daily:amount*DAILY_PERCENT,
+        total:amount*DAILY_PERCENT*DAYS,
+        remaining:amount*DAILY_PERCENT*DAYS,
+        lastClaim:0,
+        startTime:Date.now(),
+        daysClaimed:0,
+        completed:false
+      };
+    });
+  }catch(e){
+    showPopup("Error","Permission denied");
+    return;
+  }
 
   if(!created){
     showPopup("Active Plan","Already invested");
@@ -300,14 +296,14 @@ async function invest(amount){
 
   if(!success){
     await set(ref(db,path),null);
-    showPopup("Error","Insufficient balance","error");
+    showPopup("Error","Insufficient balance");
     return;
   }
 
-  showPopup("Success","Investment started","success");
+  showPopup("Success","Investment started");
 }
 
-/* CLAIM (UNCHANGED) */
+/* CLAIM unchanged */
 async function claim(amount){
   const investRef=ref(db,"investments/"+uid+"/12days/"+amount);
 
@@ -343,7 +339,7 @@ async function claim(amount){
     return user;
   });
 
-  showPopup("Success","Earnings received","success");
+  showPopup("Success","Earnings received");
 }
 
 /* REALTIME */
@@ -369,4 +365,4 @@ onAuthStateChanged(auth,user=>{
 </script>
 
 </body>
-  </html>
+</html>
