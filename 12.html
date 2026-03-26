@@ -46,21 +46,11 @@ body{
   pointer-events:none;
 }
 
-.plan h3{
-  color:#38bdf8;
-  font-size:22px;
-  margin-bottom:6px;
-}
+.plan h3{color:#38bdf8;font-size:22px;}
 
-.plan p{
-  font-size:13px;
-  color:#94a3b8;
-  margin:4px 0;
-}
-
-.amount-green{color:#22c55e;font-weight:700;}
-.amount-blue{color:#38bdf8;font-weight:700;}
-.amount-purple{color:#a78bfa;font-weight:700;}
+.amount-days{color:#facc15;font-weight:700;}
+.amount-percent{color:#22c55e;font-weight:700;}
+.amount-payout{color:#a78bfa;font-weight:700;}
 
 button{
   width:100%;
@@ -74,6 +64,32 @@ button{
   font-weight:600;
 }
 
+.claim-btn{
+  background:linear-gradient(45deg,#22c55e,#16a34a);
+}
+
+/* ✅ Notification styles */
+.popup{
+  width:300px;
+  background:#020617;
+  border-radius:18px;
+  padding:20px;
+  text-align:center;
+  border:1px solid rgba(255,255,255,0.08);
+}
+
+/* success */
+.popup.success{border-color:#22c55e;}
+.popup.success h3{color:#22c55e;}
+
+/* warning */
+.popup.warning{border-color:#facc15;}
+.popup.warning h3{color:#facc15;}
+
+/* info */
+.popup.info{border-color:#38bdf8;}
+.popup.info h3{color:#38bdf8;}
+
 .overlay{
   position:fixed;
   inset:0;
@@ -86,18 +102,7 @@ button{
   transition:0.3s;
 }
 
-.overlay.show{
-  opacity:1;
-  pointer-events:auto;
-}
-
-.popup{
-  width:300px;
-  background:#020617;
-  border-radius:18px;
-  padding:20px;
-  text-align:center;
-}
+.overlay.show{opacity:1;pointer-events:auto;}
 </style>
 </head>
 
@@ -109,7 +114,7 @@ button{
 </div>
 
 <div id="overlay" class="overlay">
-  <div class="popup">
+  <div id="popupBox" class="popup">
     <h3 id="popTitle"></h3>
     <p id="popMsg"></p>
   </div>
@@ -118,108 +123,193 @@ button{
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 import { getDatabase, ref, onValue, runTransaction } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
-import { getAuth } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSy...",
+  apiKey: "AIzaSyCc637WbfRNZ8-0CN4sEqEnGY27-oAdGiw",
   authDomain: "betpawa-6ef7e.firebaseapp.com",
   databaseURL: "https://betpawa-6ef7e-default-rtdb.europe-west1.firebasedatabase.app",
   projectId: "betpawa-6ef7e",
-  storageBucket: "betpawa-6ef7e.appspot.com",
+  storageBucket: "betpawa-6ef7e.firebasestorage.app",
   messagingSenderId: "908050081607",
-  appId: "1:908050081607:web:db6e861fca63df78584e62"
+  appId: "1:908050081607:web:db6e861fca63df78584e62",
+  measurementId: "G-C7M7HWTD01"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const auth = getAuth(app);
 
-const plans = [150000,500000,1000000,5000000];
-const DAILY_PERCENT = 0.0917;
-const DAYS = 12;
+const plans=[150000,500000,1000000,5000000];
+const DAILY_PERCENT=0.0917;
+const DAYS=12;
+
+let user=null;
+let investments={};
 
 const overlay=document.getElementById("overlay");
+const popupBox=document.getElementById("popupBox");
 const popTitle=document.getElementById("popTitle");
 const popMsg=document.getElementById("popMsg");
 
-function showPopup(title,msg){
+/* ✅ IMPROVED NOTIFICATION */
+function showPopup(type,title,msg){
+  popupBox.className="popup "+type;
   popTitle.innerText=title;
   popMsg.innerText=msg;
   overlay.classList.add("show");
-  setTimeout(()=>overlay.classList.remove("show"),2000);
+  setTimeout(()=>overlay.classList.remove("show"),2200);
+}
+
+function format(ms){
+  if(ms<=0) return "Ready to claim";
+  let s=Math.floor(ms/1000);
+  return `${Math.floor(s/3600)}h ${Math.floor((s%3600)/60)}m ${s%60}s`;
 }
 
 function render(){
-  const container=document.getElementById("plans");
-  container.innerHTML="";
+  const box=document.getElementById("plans");
+  box.innerHTML="";
 
   plans.forEach(amount=>{
+    let inv=investments[amount];
     let div=document.createElement("div");
     div.className="plan";
 
-    let expected = amount * DAILY_PERCENT * DAYS;
+    if(inv){
+      let last=inv.lastClaim||inv.startTime;
+      let time=(last+86400000)-Date.now();
+      let can=time<=0;
+      let daysLeft=DAYS-inv.daysClaimed;
 
-    div.innerHTML=`
-      <h3>${amount.toLocaleString()} UGX</h3>
-      <p>Duration: <span class="amount-blue">${DAYS} Days</span></p>
-      <p>Daily Profit: <span class="amount-green">${(DAILY_PERCENT*100).toFixed(2)}%</span></p>
-      <p>Expected Payout: <span class="amount-purple">${Math.floor(expected)} UGX</span></p>
-    `;
+      div.innerHTML=`
+        <h3>${amount.toLocaleString()} UGX</h3>
+        <p>Days Remaining: <span class="amount-days">${daysLeft}</span></p>
+        <p>Daily Profit: <span class="amount-percent">${Math.floor(inv.daily)} UGX</span></p>
+        <p>Expected Payout: <span class="amount-payout">${Math.floor(inv.total)} UGX</span></p>
+        <p>${format(time)}</p>
+      `;
 
-    let btn=document.createElement("button");
-    btn.innerText="Invest Now";
-    btn.onclick=()=>invest(amount);
+      let btn=document.createElement("button");
+      btn.className="claim-btn";
+      btn.innerText="Receive Daily Earnings";
 
-    div.appendChild(btn);
-    container.appendChild(div);
+      if(can){
+        btn.onclick=()=>claim(amount);
+      }else{
+        btn.style.opacity="0.5";
+      }
+
+      div.appendChild(btn);
+
+    }else{
+      let total=amount*DAILY_PERCENT*DAYS;
+
+      div.innerHTML=`
+        <h3>${amount.toLocaleString()} UGX</h3>
+        <p>Duration: <span class="amount-days">${DAYS} Days</span></p>
+        <p>Daily Profit: <span class="amount-percent">${(DAILY_PERCENT*100).toFixed(2)}%</span></p>
+        <p>Expected Payout: <span class="amount-payout">${Math.floor(total)} UGX</span></p>
+      `;
+
+      let btn=document.createElement("button");
+      btn.innerText="Invest Now";
+      btn.onclick=()=>invest(amount);
+
+      div.appendChild(btn);
+    }
+
+    box.appendChild(div);
   });
 }
 
+/* INVEST */
 async function invest(amount){
+  if(!user) return showPopup("info","Session","Please wait...");
 
-  const user = auth.currentUser; // ✅ REAL SESSION
+  const uid=user.uid;
+  const total=amount*DAILY_PERCENT*DAYS;
 
-  if(!user){
-    showPopup("Error","User not logged in");
-    return;
-  }
+  let ok=false;
 
-  const uid = user.uid;
+  await runTransaction(ref(db,"users/"+uid),u=>{
+    if(!u || (u.balance||0)<amount) return;
+    u.balance-=amount;
+    u.lockedBalance=(u.lockedBalance||0)+total;
+    ok=true;
+    return u;
+  });
 
-  const path="investments/"+uid+"/12days/"+amount;
+  /* ✅ FIXED MESSAGE */
+  if(!ok) return showPopup("warning","Insufficient Funds","Your balance is too low for this investment");
 
-  let created=false;
+  await runTransaction(ref(db,"investments/"+uid+"/12days/"+amount),d=>{
+    if(d) return;
+    return {
+      amount,
+      daily:amount*DAILY_PERCENT,
+      total,
+      remaining:total,
+      startTime:Date.now(),
+      lastClaim:0,
+      daysClaimed:0,
+      completed:false
+    };
+  });
 
-  try{
-    await runTransaction(ref(db,path),data=>{
-      if(data) return;
-      created=true;
-      return {
-        amount,
-        daily:amount*DAILY_PERCENT,
-        total:amount*DAILY_PERCENT*DAYS,
-        remaining:amount*DAILY_PERCENT*DAYS,
-        lastClaim:0,
-        startTime:Date.now(),
-        daysClaimed:0,
-        completed:false
-      };
-    });
-  }catch(e){
-    showPopup("Error","Permission denied");
-    return;
-  }
-
-  if(!created){
-    showPopup("Active Plan","Already invested");
-    return;
-  }
-
-  showPopup("Success","Investment started");
+  showPopup("success","Success","Investment started");
 }
 
-render();
+/* CLAIM */
+async function claim(amount){
+  const uid=user.uid;
+  let pay=0,ok=false;
+
+  await runTransaction(ref(db,"investments/"+uid+"/12days/"+amount),d=>{
+    if(d){
+      let last=d.lastClaim||d.startTime;
+      if(Date.now()>=last+86400000){
+        pay=Math.floor(d.daily);
+        d.lastClaim=Date.now();
+        d.daysClaimed++;
+        d.remaining-=pay;
+        d.completed=d.daysClaimed>=DAYS;
+        ok=true;
+      }
+    }
+    return d;
+  });
+
+  if(!ok) return showPopup("info","Please wait","Not yet time to claim");
+
+  await runTransaction(ref(db,"users/"+uid),u=>{
+    u.balance+=pay;
+    u.lockedBalance-=pay;
+    return u;
+  });
+
+  showPopup("success","Success","Earnings received");
+}
+
+onAuthStateChanged(auth,u=>{
+  user=u;
+
+  if(u){
+    onValue(ref(db,"investments/"+u.uid+"/12days"),snap=>{
+      let raw=snap.val()||{};
+      investments={};
+      Object.values(raw).forEach(v=>{
+        investments[v.amount]=v;
+      });
+      render();
+    });
+  }else{
+    render();
+  }
+});
+
+setInterval(render,1000);
 </script>
 
 </body>
-</html>
+  </html>
