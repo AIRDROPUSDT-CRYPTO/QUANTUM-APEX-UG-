@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Deposit | Quantum Apex Ug</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+
+<style>
+*{
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
+  font-family:'Poppins',sans-serif;
+}
+
+/* 🔥 PREMIUM BACKGROUND */
+body{
+  background: radial-gradient(circle at top, #1e293b, #020617 70%);
+  color:#fff;
+  min-height:100vh;
+}
+
+/* TOPBAR */
+.topbar{
+  padding:15px;
+  text-align:center;
+  background:rgba(15,23,42,0.9);
+  font-weight:600;
+  border-bottom:1px solid rgba(148,163,184,0.2);
+}
+
+/* CONTAINER */
+.container{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  padding:20px;
+}
+
+/* CARD */
+.card{
+  background: rgba(15,23,42,0.75);
+  padding:25px;
+  border-radius:18px;
+  width:360px;
+  backdrop-filter: blur(18px);
+  box-shadow:0 10px 30px rgba(0,0,0,0.6);
+}
+
+.card h3{
+  color:#38bdf8;
+  margin-bottom:15px;
+  text-align:center;
+}
+
+/* INPUT */
+input{
+  width:100%;
+  padding:12px;
+  margin:8px 0;
+  border-radius:10px;
+  border:none;
+  outline:none;
+  background:#020617;
+  color:#fff;
+  border:1px solid rgba(148,163,184,0.2);
+}
+
+/* EMAIL COPY BOX */
+.email-box{
+  display:flex;
+  gap:5px;
+}
+
+.email-box input{
+  flex:1;
+}
+
+.copy-btn{
+  padding:10px;
+  border:none;
+  border-radius:10px;
+  background:#0ea5e9;
+  color:#fff;
+  cursor:pointer;
+}
+
+/* WARNING */
+.warning{
+  background:rgba(239,68,68,0.1);
+  border:1px solid rgba(239,68,68,0.3);
+  padding:12px;
+  border-radius:10px;
+  font-size:13px;
+  margin-top:10px;
+  color:#fca5a5;
+  text-align:center;
+}
+
+/* BUTTON */
+.pay-btn{
+  width:100%;
+  padding:13px;
+  border:none;
+  border-radius:30px;
+  margin-top:15px;
+  background:linear-gradient(45deg,#0ea5e9,#6366f1);
+  color:#fff;
+  font-weight:600;
+  cursor:pointer;
+  box-shadow:0 4px 15px rgba(14,165,233,0.4);
+}
+
+/* POPUP CENTER */
+.popup{
+  position: fixed;
+  top:50%;
+  left:50%;
+  transform: translate(-50%,-50%) scale(0.85);
+  background:#020617;
+  padding:20px 30px;
+  border-radius:14px;
+  text-align:center;
+  opacity:0;
+  transition:0.25s;
+  z-index:1000;
+}
+
+.popup.show{
+  opacity:1;
+  transform: translate(-50%,-50%) scale(1);
+}
+
+.popup.success{
+  border:2px solid #22c55e;
+}
+
+.popup.error{
+  border:2px solid #ef4444;
+}
+</style>
+</head>
+
+<body>
+
+<div class="topbar">Deposit Funds</div>
+
+<div class="container">
+  <div class="card">
+    <h3>Make Deposit</h3>
+
+    <input type="text" id="name" placeholder="Enter your full name">
+
+    <!-- COPYABLE EMAIL -->
+    <div class="email-box">
+      <input type="text" id="emailField" value="nicelroberts141@gmail.com" readonly>
+      <button class="copy-btn" onclick="copyEmail()">Copy</button>
+    </div>
+
+    <!-- NOTICE -->
+    <div class="warning">
+      Copy this email and use it on the payment page.<br>
+      Do not change it to avoid failed deposits.
+    </div>
+
+    <input type="number" id="amount" placeholder="Enter amount (UGX)">
+
+    <button class="pay-btn" onclick="goPay()">
+      Continue to Payment
+    </button>
+  </div>
+</div>
+
+<!-- POPUP -->
+<div id="popup" class="popup">
+  <p id="popupMsg"></p>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+import { getDatabase, ref, push } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCc637WbfRNZ8-0CN4sEqEnGY27-oAdGiw",
+  authDomain: "betpawa-6ef7e.firebaseapp.com",
+  databaseURL: "https://betpawa-6ef7e-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "betpawa-6ef7e"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const auth = getAuth(app);
+
+let currentUser = null;
+
+onAuthStateChanged(auth,(user)=>{
+  currentUser = user || null;
+});
+
+/* POPUP */
+function showPopup(msg,type){
+  const p = document.getElementById("popup");
+  p.className = "popup show " + type;
+  document.getElementById("popupMsg").innerText = msg;
+  setTimeout(()=> p.classList.remove("show"),2000);
+}
+
+/* COPY EMAIL */
+window.copyEmail = function(){
+  const email = document.getElementById("emailField");
+  navigator.clipboard.writeText(email.value);
+  showPopup("Email copied","success");
+}
+
+/* PAYMENT */
+window.goPay = function(){
+
+  let name = document.getElementById("name").value.trim();
+  let amount = Number(document.getElementById("amount").value);
+
+  if(!name || !amount){
+    return showPopup("Fill in the required fields","error");
+  }
+
+  push(ref(db,"deposits"),{
+    userId: currentUser ? currentUser.uid : "guest",
+    name: name,
+    amount: amount,
+    status: "pending",
+    createdAt: Date.now()
+  }).catch(()=>{});
+
+  showPopup("Redirecting to payment...","success");
+
+  setTimeout(()=>{
+    window.location.href = "https://flutterwave.com/pay/ugxeversend";
+  },700);
+}
+</script>
+
+</body>
+</html>
