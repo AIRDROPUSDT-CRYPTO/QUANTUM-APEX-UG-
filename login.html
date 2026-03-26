@@ -1,0 +1,259 @@
+<!DOCTYPE html>  
+<html lang="en">  
+<head>  
+<meta charset="UTF-8">  
+<meta name="viewport" content="width=device-width, initial-scale=1.0">  
+<title>Login | Quantum Apex Ug</title>  
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">  
+
+<style>  
+* {  
+  margin: 0;  
+  padding: 0;  
+  box-sizing: border-box;  
+  font-family: 'Poppins', sans-serif;  
+}  
+
+body {  
+  background: linear-gradient(135deg,#0f172a,#020617);  
+  display: flex;  
+  justify-content: center;  
+  align-items: center;  
+  height: 100vh;  
+  color: #fff;  
+}  
+
+.container {  
+  background: rgba(255,255,255,0.05);  
+  padding: 30px;  
+  border-radius: 15px;  
+  width: 350px;  
+  backdrop-filter: blur(12px);  
+  text-align: center;  
+}  
+
+h2 {  
+  margin-bottom: 20px;  
+  color: #38bdf8;  
+}  
+
+input {  
+  width: 100%;  
+  padding: 12px;  
+  margin: 8px 0;  
+  border-radius: 8px;  
+  border: none;  
+  outline: none;  
+}  
+
+.login-btn {  
+  width: 100%;  
+  padding: 12px;  
+  margin-top: 10px;  
+  border: none;  
+  border-radius: 30px;  
+  background: linear-gradient(45deg,#38bdf8,#6366f1);  
+  color: #fff;  
+  cursor: pointer;  
+}  
+
+.reset-btn {  
+  width: 100%;  
+  padding: 10px;  
+  margin-top: 10px;  
+  border: none;  
+  border-radius: 30px;  
+  background: linear-gradient(45deg,#22c55e,#16a34a);  
+  color: #fff;  
+  cursor: pointer;  
+}  
+
+.links {  
+  margin-top: 10px;  
+}  
+
+.links span {  
+  font-size: 13px;  
+  color: #94a3b8;  
+  cursor: pointer;  
+}  
+
+.links span:hover {  
+  color: #38bdf8;  
+}  
+
+.popup {  
+  position: fixed;  
+  top: 50%;  
+  left: 50%;  
+  transform: translate(-50%, -50%) scale(0.85);  
+  background: #020617;  
+  padding: 20px 30px;  
+  border-radius: 12px;  
+  text-align: center;  
+  opacity: 0;  
+  transition: 0.25s ease;  
+  z-index: 1000;  
+}  
+
+.popup.show {  
+  opacity: 1;  
+  transform: translate(-50%, -50%) scale(1);  
+}  
+
+.popup.success {  
+  border: 2px solid #22c55e;  
+}  
+
+.popup.error {  
+  border: 2px solid #ef4444;  
+}  
+
+.popup h3 {  
+  font-size: 16px;  
+}  
+
+.popup p {  
+  margin-top: 6px;  
+  font-size: 14px;  
+}  
+</style>  
+</head>  
+
+<body>  
+
+<div class="container">  
+  <h2>Login</h2>  
+
+  <input type="email" id="email" placeholder="Email Address">  
+  <input type="password" id="password" placeholder="Password">  
+
+  <button class="login-btn" onclick="login()">Login</button>  
+
+  <button class="reset-btn" onclick="forgotPassword()">Reset Password</button>  
+
+  <div class="links">  
+    <span onclick="goRegister()">Create Account</span>  
+  </div>  
+</div>  
+
+<div id="popup" class="popup">  
+  <h3 id="popupTitle"></h3>  
+  <p id="popupMsg"></p>  
+</div>  
+
+<script type="module">  
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";  
+
+import {   
+  getAuth,   
+  signInWithEmailAndPassword,   
+  sendPasswordResetEmail,  
+  setPersistence,  
+  browserLocalPersistence  
+} from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";  
+
+import {   
+  getDatabase,   
+  ref,   
+  onValue   
+} from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";  
+
+const firebaseConfig = {  
+  apiKey: "AIzaSyCc637WbfRNZ8-0CN4sEqEnGY27-oAdGiw",  
+  authDomain: "betpawa-6ef7e.firebaseapp.com",  
+  databaseURL: "https://betpawa-6ef7e-default-rtdb.europe-west1.firebasedatabase.app",  
+  projectId: "betpawa-6ef7e",  
+  storageBucket: "betpawa-6ef7e.firebasestorage.app",  
+  messagingSenderId: "908050081607",  
+  appId: "1:908050081607:web:db6e861fca63df78584e62"  
+};  
+
+const app = initializeApp(firebaseConfig);  
+const auth = getAuth(app);  
+const db = getDatabase(app);  
+
+function showPopup(title, message, type){  
+  const popup = document.getElementById("popup");  
+  popup.className = "popup show " + type;  
+
+  document.getElementById("popupTitle").innerText = title;  
+  document.getElementById("popupMsg").innerText = message;  
+
+  setTimeout(()=>{  
+    popup.classList.remove("show");  
+  },2200);  
+}  
+
+/* LOGIN (FIXED) */
+window.login = async function(){  
+  let email = document.getElementById("email").value.trim();  
+  let password = document.getElementById("password").value;  
+
+  if(!email || !password){  
+    return showPopup("", "Fill in the required fields", "error");  
+  }  
+
+  try{
+    /* ✅ IMPORTANT: KEEP USER LOGGED IN */
+    await setPersistence(auth, browserLocalPersistence);
+
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);  
+    const user = userCredential.user;  
+
+    showPopup("Success","Login successful","success");  
+
+    /* SYNC USER DATA */
+    const userRef = ref(db, "users/" + user.uid);  
+
+    onValue(userRef, (snapshot) => {  
+      const data = snapshot.val();  
+      localStorage.setItem("userData", JSON.stringify(data));  
+    });  
+
+    setTimeout(()=>{  
+      window.location.href = "dashboard.html";  
+    },1200);  
+
+  }catch(error){  
+    let msg = "Invalid credentials";  
+
+    if(error.code === "auth/invalid-email"){  
+      msg = "Invalid email format";  
+    }  
+    if(error.code === "auth/user-not-found"){  
+      msg = "Account not found";  
+    }  
+    if(error.code === "auth/wrong-password"){  
+      msg = "Wrong password";  
+    }  
+
+    showPopup("", msg, "error");  
+  }  
+}  
+
+/* RESET PASSWORD */
+window.forgotPassword = function(){  
+  let email = document.getElementById("email").value;  
+
+  if(!email){  
+    return showPopup("", "Enter your email", "error");  
+  }  
+
+  sendPasswordResetEmail(auth, email)  
+  .then(() => {  
+    showPopup("Success","Password reset email sent","success");  
+  })  
+  .catch(() => {  
+    showPopup("", "Unable to process request", "error");  
+  });  
+}  
+
+window.goRegister = function(){  
+  window.location.href = "register.html";  
+}  
+</script>  
+
+</body>  
+  </html>
