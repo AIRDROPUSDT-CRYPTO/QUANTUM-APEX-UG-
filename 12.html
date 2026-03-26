@@ -80,6 +80,9 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase
 import { getDatabase, ref, onValue, update, push, get } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
 
+/* ✅ FIX: DEFINE ELEMENT */
+const plansDiv = document.getElementById("plans");
+
 const firebaseConfig = {
   apiKey: "AIzaSyCc637WbfRNZ8-0CN4sEqEnGY27-oAdGiw",
   authDomain: "betpawa-6ef7e.firebaseapp.com",
@@ -100,7 +103,7 @@ const DAILY_PERCENT = 0.0917;
 const DAYS = 12;
 
 let uid=null;
-let notified = {}; // prevent spam notifications
+let notified = {};
 
 /* POPUP */
 function showPopup(t,m,type="info"){
@@ -110,8 +113,9 @@ function showPopup(t,m,type="info"){
   setTimeout(()=>popup.classList.remove("show"),2000);
 }
 
-/* COUNTDOWN */
+/* TIME FORMAT */
 function formatTime(ms){
+  if(ms <= 0) return "0h 0m 0s";
   let total = Math.floor(ms/1000);
   let h = Math.floor(total/3600);
   let m = Math.floor((total%3600)/60);
@@ -128,6 +132,7 @@ function renderPlans(investments={}){
 
     if(active){
       let finished = active.completed === true;
+
       let now = Date.now();
       let nextTime = active.lastClaim + 86400000;
       let remainingTime = nextTime - now;
@@ -135,7 +140,7 @@ function renderPlans(investments={}){
 
       let earned = Math.floor(active.daily * active.daysClaimed);
 
-      /* 🔔 notify once */
+      /* notify once */
       if(canClaim && !finished && !notified[active.id]){
         showPopup("Ready 🎉","You can now claim earnings","success");
         notified[active.id] = true;
@@ -172,14 +177,15 @@ function renderPlans(investments={}){
   plansDiv.innerHTML=html;
 }
 
-/* LIVE TIMER REFRESH */
-setInterval(()=>{
+/* LIVE TIMER (NO RESET) */
+setInterval(async ()=>{
   if(uid){
-    get(ref(db,"investments/"+uid+"/12days")).then(snap=>{
-      let data = snap.val() || {};
-      Object.keys(data).forEach(k=> data[k].id = k);
-      renderPlans(data);
-    });
+    const snap = await get(ref(db,"investments/"+uid+"/12days"));
+    let data = snap.val() || {};
+
+    Object.keys(data).forEach(k=> data[k].id = k);
+
+    renderPlans(data);
   }
 },1000);
 
