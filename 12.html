@@ -17,29 +17,65 @@ body{
 
 .container{padding:20px;}
 
+/* 🔥 FINTECH CARD */
 .plan{
-  background:linear-gradient(135deg,#1e293b,#020617);
+  background:linear-gradient(135deg,#0f172a,#020617);
   padding:18px;
-  border-radius:16px;
+  border-radius:18px;
   margin-bottom:15px;
-  box-shadow:0 0 20px rgba(0,0,0,0.3);
-  transition:0.3s;
+  box-shadow:
+    0 0 0 1px rgba(56,189,248,0.1),
+    0 0 25px rgba(56,189,248,0.15),
+    inset 0 0 20px rgba(255,255,255,0.02);
+  position:relative;
+  overflow:hidden;
 }
 
-.plan:hover{
-  transform:translateY(-2px);
-  box-shadow:0 10px 30px rgba(0,0,0,0.5);
+/* glow border */
+.plan::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  border-radius:18px;
+  padding:1px;
+  background:linear-gradient(120deg,#38bdf8,#6366f1,#22c55e);
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;
+  mask-composite:exclude;
+  opacity:0.3;
 }
 
 .plan h3{
   color:#38bdf8;
   font-size:22px;
+  margin-bottom:6px;
 }
 
 .plan p{
   font-size:13px;
   color:#94a3b8;
   margin:4px 0;
+}
+
+/* 🔥 VALUE COLORS */
+.amount-green{
+  color:#22c55e;
+  font-weight:700;
+  text-shadow:0 0 8px rgba(34,197,94,0.5);
+}
+
+.amount-blue{
+  color:#38bdf8;
+  font-weight:700;
+  text-shadow:0 0 8px rgba(56,189,248,0.5);
+}
+
+.amount-purple{
+  color:#a78bfa;
+  font-weight:700;
+  text-shadow:0 0 8px rgba(167,139,250,0.5);
 }
 
 button{
@@ -52,10 +88,12 @@ button{
   color:#fff;
   cursor:pointer;
   font-weight:600;
+  box-shadow:0 5px 15px rgba(99,102,241,0.3);
 }
 
 .claim-btn{
   background:linear-gradient(45deg,#22c55e,#16a34a);
+  box-shadow:0 5px 15px rgba(34,197,94,0.3);
 }
 
 .disabled{
@@ -68,14 +106,12 @@ button{
   position:fixed;
   inset:0;
   background:rgba(0,0,0,0.6);
-  backdrop-filter:blur(6px);
   display:flex;
   align-items:center;
   justify-content:center;
   opacity:0;
   pointer-events:none;
   transition:0.3s;
-  z-index:999;
 }
 
 .overlay.show{
@@ -85,20 +121,16 @@ button{
 
 .popup{
   width:300px;
-  background:linear-gradient(135deg,#0f172a,#020617);
+  background:#020617;
   border-radius:18px;
-  padding:22px;
+  padding:20px;
   text-align:center;
+  box-shadow:0 0 30px rgba(0,0,0,0.6);
 }
 
 .popup.success{border:1px solid #22c55e;}
 .popup.error{border:1px solid #ef4444;}
 .popup.info{border:1px solid #38bdf8;}
-
-.popup button{
-  margin-top:14px;
-  background:#22c55e;
-}
 </style>
 </head>
 
@@ -109,12 +141,10 @@ button{
 <div id="plans"></div>
 </div>
 
-<!-- POPUP -->
 <div id="overlay" class="overlay">
   <div id="popup" class="popup">
     <h3 id="popTitle"></h3>
     <p id="popMsg"></p>
-    <button id="popBtn" style="display:none;"></button>
   </div>
 </div>
 
@@ -144,35 +174,19 @@ const DAILY_PERCENT = 0.0917;
 const DAYS = 12;
 
 let uid=null;
-let investments = {};
-let userData = {};
+let investments={};
 
 /* POPUP */
 const overlay=document.getElementById("overlay");
-const popup=document.getElementById("popup");
 const popTitle=document.getElementById("popTitle");
 const popMsg=document.getElementById("popMsg");
-const popBtn=document.getElementById("popBtn");
 
-function showPopup(title,msg,type="info",btnText=null,action=null){
+function showPopup(title,msg,type="info"){
   popTitle.innerText=title;
   popMsg.innerText=msg;
-  popup.className="popup "+type;
   overlay.classList.add("show");
-
-  if(btnText){
-    popBtn.style.display="block";
-    popBtn.innerText=btnText;
-    popBtn.onclick=action;
-  }else{
-    popBtn.style.display="none";
-    setTimeout(()=>overlay.classList.remove("show"),2000);
-  }
+  setTimeout(()=>overlay.classList.remove("show"),2000);
 }
-
-overlay.onclick=(e)=>{
-  if(e.target===overlay) overlay.classList.remove("show");
-};
 
 /* TIME */
 function formatTime(ms){
@@ -190,23 +204,23 @@ function render(){
   container.innerHTML="";
 
   plans.forEach(amount=>{
-
-    let active = investments[amount] || null;
-
+    let active = investments[amount];
     let div=document.createElement("div");
     div.className="plan";
 
     if(active){
 
-      let lastTime = active.lastClaim===0 ? active.startTime : active.lastClaim;
-      let remaining = (lastTime + 86400000) - Date.now();
-      let canClaim = remaining <= 0;
+      let last = active.lastClaim || active.startTime;
+      let remainingTime = (last + 86400000) - Date.now();
+      let canClaim = remainingTime <= 0;
+      let remainingDays = DAYS - active.daysClaimed;
 
       div.innerHTML=`
         <h3>${amount.toLocaleString()} UGX</h3>
-        <p>Daily: ${Math.floor(active.daily)} UGX</p>
-        <p>Progress: ${active.daysClaimed}/${DAYS}</p>
-        <p>${active.completed ? "Completed" : formatTime(remaining)}</p>
+        <p>Daily Earnings: <span class="amount-green">${Math.floor(active.daily)} UGX</span></p>
+        <p>Remaining Days: <span class="amount-blue">${remainingDays}</span></p>
+        <p>Expected Payout: <span class="amount-purple">${Math.floor(active.total)} UGX</span></p>
+        <p>${active.completed ? "Completed" : formatTime(remainingTime)}</p>
       `;
 
       let btn=document.createElement("button");
@@ -215,14 +229,13 @@ function render(){
       if(active.completed){
         btn.innerText="Completed";
         btn.classList.add("disabled");
-      }
-      else if(canClaim){
-        btn.innerText="Receive Today's Earnings";
-        btn.onclick=()=>claim(amount);
-      }
-      else{
-        btn.innerText="Locked";
-        btn.classList.add("disabled");
+      }else{
+        btn.innerText="Receive Daily Earnings";
+        if(!canClaim){
+          btn.classList.add("disabled");
+        }else{
+          btn.onclick=()=>claim(amount);
+        }
       }
 
       div.appendChild(btn);
@@ -248,11 +261,9 @@ function render(){
 
 setInterval(render,1000);
 
-/* INVEST */
+/* INVEST (UNCHANGED) */
 async function invest(amount){
-
   const path="investments/"+uid+"/12days/"+amount;
-
   let created=false;
 
   await runTransaction(ref(db,path),data=>{
@@ -271,7 +282,7 @@ async function invest(amount){
   });
 
   if(!created){
-    showPopup("Active Plan","Already invested in this plan","info");
+    showPopup("Active Plan","Already invested");
     return;
   }
 
@@ -289,16 +300,15 @@ async function invest(amount){
 
   if(!success){
     await set(ref(db,path),null);
-    showPopup("Insufficient Balance","Please deposit funds","error");
+    showPopup("Error","Insufficient balance","error");
     return;
   }
 
   showPopup("Success","Investment started","success");
 }
 
-/* CLAIM */
+/* CLAIM (UNCHANGED) */
 async function claim(amount){
-
   const investRef=ref(db,"investments/"+uid+"/12days/"+amount);
 
   let payout=0;
@@ -306,9 +316,9 @@ async function claim(amount){
 
   await runTransaction(investRef,data=>{
     if(data){
-      let lastTime=data.lastClaim===0 ? data.startTime : data.lastClaim;
+      let last=data.lastClaim || data.startTime;
 
-      if(Date.now() >= lastTime + 86400000){
+      if(Date.now() >= last + 86400000){
         payout=Math.floor(data.daily);
         data.lastClaim=Date.now();
         data.daysClaimed++;
@@ -321,7 +331,7 @@ async function claim(amount){
   });
 
   if(!allowed){
-    showPopup("Wait","Come back after 24 hours","info");
+    showPopup("Wait","Come back later");
     return;
   }
 
@@ -341,10 +351,6 @@ onAuthStateChanged(auth,user=>{
   if(user){
     uid=user.uid;
 
-    onValue(ref(db,"users/"+uid),snap=>{
-      userData=snap.val()||{};
-    });
-
     onValue(ref(db,"investments/"+uid+"/12days"),snap=>{
       let raw=snap.val()||{};
       investments={};
@@ -363,4 +369,4 @@ onAuthStateChanged(auth,user=>{
 </script>
 
 </body>
-</html>
+  </html>
