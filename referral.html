@@ -75,7 +75,12 @@ body{
   color:#94a3b8;
 }
 
-/* POPUP */
+.info{
+  font-size:13px;
+  line-height:1.6;
+  color:#cbd5f5;
+}
+
 .popup{
   position:fixed;
   top:20px;
@@ -112,6 +117,17 @@ body{
     <p>Total Referrals</p>
   </div>
 
+  <div class="card">
+    <div class="title">How Referral Rewards Work</div>
+    <div class="info">
+      • Earn <b>10% bonus</b> on your referral's <b>first deposit only</b><br><br>
+      • Bonus is credited instantly to your <b>Main Balance</b><br><br>
+      • Each referral can generate <b>only one reward</b><br><br>
+      • No duplicate or repeated bonuses are allowed<br><br>
+      • Rewards are processed automatically once deposit is detected
+    </div>
+  </div>
+
 </div>
 
 <div id="popup" class="popup">
@@ -120,14 +136,19 @@ body{
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
 
+/* ✅ UPDATED CONFIG */
 const firebaseConfig = {
   apiKey: "AIzaSyCc637WbfRNZ8-0CN4sEqEnGY27-oAdGiw",
   authDomain: "betpawa-6ef7e.firebaseapp.com",
   databaseURL: "https://betpawa-6ef7e-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "betpawa-6ef7e"
+  projectId: "betpawa-6ef7e",
+  storageBucket: "betpawa-6ef7e.firebasestorage.app",
+  messagingSenderId: "908050081607",
+  appId: "1:908050081607:web:db6e861fca63df78584e62",
+  measurementId: "G-C7M7HWTD01"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -135,17 +156,15 @@ const db = getDatabase(app);
 const auth = getAuth(app);
 
 let currentLink = "";
+let myUsername = "";
 
-/* POPUP */
 function showPopup(msg,type){
   const popup = document.getElementById("popup");
   popup.className = "popup show " + type;
   document.getElementById("popupMsg").innerText = msg;
-
   setTimeout(()=> popup.classList.remove("show"),2000);
 }
 
-/* COPY */
 window.copyLink = function(){
   if(!currentLink) return;
 
@@ -154,10 +173,8 @@ window.copyLink = function(){
   .catch(()=> showPopup("Copy failed","error"));
 }
 
-/* AUTH + DATA */
 onAuthStateChanged(auth, user => {
 
-  /* ❌ NO REDIRECT — just stop execution */
   if(!user){
     showPopup("User not authenticated","error");
     return;
@@ -169,24 +186,44 @@ onAuthStateChanged(auth, user => {
     const data = snap.val();
     if(!data) return;
 
-    const username = data.username;
+    myUsername = data.username;
 
-    /* 🔒 SECURE LINK (FROM DB ONLY) */
-    currentLink = window.location.origin + "/register.html?ref=" + username;
+    currentLink = "https://airdropusdt-crypto.github.io/QUANTUM-APEX-UG-/register.html?ref=" + myUsername;
 
     document.getElementById("refLink").innerText = currentLink;
 
-    /* REFERRAL COUNT */
     onValue(ref(db,"users"), usersSnap => {
 
       let count = 0;
 
       usersSnap.forEach(child => {
         const u = child.val();
+        const uid = child.key;
 
-        if(u.referral === username){
+        if(u.referral === myUsername){
           count++;
         }
+
+        if(
+          u.referral === myUsername &&
+          u.firstDeposit > 0 &&
+          !u.refBonusPaid
+        ){
+          let bonus = Math.floor(u.firstDeposit * 0.10);
+
+          const myRef = ref(db,"users/" + user.uid);
+
+          update(myRef,{
+            balance: (data.balance || 0) + bonus
+          });
+
+          update(ref(db,"users/" + uid),{
+            refBonusPaid: true
+          });
+
+          showPopup("You earned "+bonus+" UGX referral bonus","success");
+        }
+
       });
 
       document.getElementById("refCount").innerText = count;
