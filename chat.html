@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+
+<!-- ✅ DISABLE ZOOM -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+<title>Quantum Apex Chat</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+
+<style>
+*{
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
+  font-family:Poppins;
+}
+
+/* ❌ REMOVE PAGE SCROLL */
+html,body{
+  height:100%;
+  overflow:hidden;
+  background:#020617;
+  color:#fff;
+}
+
+/* APP FULL SCREEN */
+#chatApp{
+  height:100%;
+  display:flex;
+  flex-direction:column;
+}
+
+/* HEADER */
+.header{
+  padding:10px;
+  text-align:center;
+  background:#0f172a;
+  flex-shrink:0;
+}
+
+/* CHAT AREA ONLY SCROLLS */
+.messages{
+  flex:1;
+  overflow-y:auto;
+  padding:10px;
+}
+
+/* MESSAGE STYLE */
+.msg{margin-bottom:10px;max-width:75%;}
+.name{font-size:11px;color:#38bdf8;}
+.bubble{padding:8px;border-radius:10px;margin-top:3px;}
+
+.me{align-self:flex-end;}
+.me .bubble{background:#22c55e;color:#000;}
+.other .bubble{background:#1e293b;}
+
+/* INPUT FIXED */
+.input-box{
+  display:flex;
+  align-items:center;
+  padding:8px;
+  background:#0f172a;
+  gap:5px;
+  flex-shrink:0;
+}
+
+/* INPUT */
+input{
+  flex:1;
+  padding:8px;
+  border:none;
+  border-radius:20px;
+  outline:none;
+}
+
+/* BUTTONS */
+.icon-btn{
+  background:#1e293b;
+  border:none;
+  padding:8px;
+  border-radius:50%;
+  color:#fff;
+}
+
+.send-btn{
+  background:#22c55e;
+  color:#000;
+}
+
+/* HIDE FILE INPUT COMPLETELY */
+#fileInput{
+  display:none;
+}
+
+/* AUDIO */
+#audioPreview{
+  display:none;
+  width:100%;
+}
+
+#deleteAudio{
+  display:none;
+  background:#ef4444;
+  border:none;
+  padding:6px;
+  border-radius:8px;
+  color:#fff;
+  margin:5px;
+}
+
+/* TOAST */
+.toast{
+  position:fixed;
+  bottom:20px;
+  left:50%;
+  transform:translateX(-50%);
+  background:#1e293b;
+  padding:10px;
+  border-radius:10px;
+  display:none;
+}
+</style>
+</head>
+
+<body>
+
+<!-- LOGIN -->
+<div id="login">
+  <h2>Enter Username</h2>
+  <input id="username">
+  <button onclick="enterChat()">Continue</button>
+</div>
+
+<!-- CHAT -->
+<div id="chatApp" style="display:none;">
+  <div class="header">Quantum Apex Live Chat</div>
+
+  <div id="messages" class="messages"></div>
+
+  <audio id="audioPreview" controls></audio>
+  <button id="deleteAudio" onclick="deleteAudio()">Delete Voice</button>
+
+  <div class="input-box">
+    <button class="icon-btn" onclick="openFile()">📎</button>
+
+    <button class="icon-btn"
+      ontouchstart="startRecording()"
+      ontouchend="stopRecording()"
+      onmousedown="startRecording()"
+      onmouseup="stopRecording()">🎤</button>
+
+    <input id="msgInput" placeholder="Type message...">
+
+    <button class="icon-btn send-btn" onclick="sendMessage()">➤</button>
+
+    <input type="file" id="fileInput">
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyCc637WbfRNZ8-0CN4sEqEnGY27-oAdGiw",
+  authDomain: "betpawa-6ef7e.firebaseapp.com",
+  projectId: "betpawa-6ef7e",
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+let currentUser = localStorage.getItem("chatUser") || "";
+let recorder, audioChunks=[], audioBlob=null, streamRef=null;
+let isRecording=false;
+
+/* TOAST */
+function showToast(msg){
+  toast.innerText=msg;
+  toast.style.display="block";
+  setTimeout(()=>toast.style.display="none",2000);
+}
+
+/* FILE BUTTON */
+function openFile(){
+  fileInput.click();
+}
+
+/* RECORD */
+async function startRecording(){
+  if(isRecording) return;
+
+  try{
+    streamRef = await navigator.mediaDevices.getUserMedia({audio:true});
+    recorder = new MediaRecorder(streamRef);
+
+    audioChunks=[];
+
+    recorder.ondataavailable = e=>{
+      if(e.data.size>0) audioChunks.push(e.data);
+    };
+
+    recorder.start();
+    isRecording=true;
+
+    showToast("Recording...");
+  }catch{
+    showToast("Mic permission denied");
+  }
+}
+
+function stopRecording(){
+  if(!recorder || !isRecording) return;
+
+  recorder.stop();
+  isRecording=false;
+
+  recorder.onstop=()=>{
+    audioBlob=new Blob(audioChunks,{type:'audio/webm'});
+
+    audioPreview.src=URL.createObjectURL(audioBlob);
+    audioPreview.style.display="block";
+    deleteAudioBtn.style.display="inline-block";
+
+    streamRef.getTracks().forEach(t=>t.stop());
+
+    showToast("Voice ready");
+  };
+}
+
+/* DELETE AUDIO */
+function deleteAudio(){
+  audioBlob=null;
+  audioPreview.style.display="none";
+  deleteAudioBtn.style.display="none";
+  showToast("Deleted");
+}
+
+const deleteAudioBtn = document.getElementById("deleteAudio");
+
+/* LOGIN */
+if(currentUser) showChat();
+
+function enterChat(){
+  let name=username.value.trim();
+  if(!name) return;
+
+  localStorage.setItem("chatUser",name);
+  currentUser=name;
+  showChat();
+}
+
+function showChat(){
+  login.style.display="none";
+  chatApp.style.display="flex";
+  loadMessages();
+}
+
+/* SEND */
+function sendMessage(){
+  let text=msgInput.value.trim();
+  let file=fileInput.files[0];
+
+  if(audioBlob){
+    let reader=new FileReader();
+    reader.onload=()=>{
+      db.collection("messages").add({
+        name:currentUser,
+        file:reader.result,
+        type:"audio",
+        time:Date.now()
+      });
+    };
+    reader.readAsDataURL(audioBlob);
+
+    deleteAudio();
+    return;
+  }
+
+  if(file){
+    let reader=new FileReader();
+    reader.onload=e=>{
+      db.collection("messages").add({
+        name:currentUser,
+        file:e.target.result,
+        type:file.type,
+        time:Date.now()
+      });
+    };
+    reader.readAsDataURL(file);
+  } 
+  else if(text){
+    db.collection("messages").add({
+      name:currentUser,
+      text:text,
+      time:Date.now()
+    });
+  }
+
+  msgInput.value="";
+  fileInput.value="";
+}
+
+/* LOAD */
+function loadMessages(){
+  db.collection("messages").orderBy("time")
+  .onSnapshot(snapshot=>{
+    messages.innerHTML="";
+
+    snapshot.forEach(doc=>{
+      let m=doc.data();
+
+      let div=document.createElement("div");
+      div.classList.add("msg",m.name===currentUser?"me":"other");
+
+      let content = m.text ? m.text :
+        (m.type==="audio" ? `<audio controls src="${m.file}"></audio>` :
+        m.type?.includes("image") ? `<img src="${m.file}" width="120">`
+        : `<a href="${m.file}" download>Download</a>`);
+
+      div.innerHTML=`
+        <div class="name">${m.name}</div>
+        <div class="bubble">${content}</div>
+      `;
+
+      messages.appendChild(div);
+    });
+
+    messages.scrollTop=messages.scrollHeight;
+  });
+}
+</script>
+
+</body>
+</html>
