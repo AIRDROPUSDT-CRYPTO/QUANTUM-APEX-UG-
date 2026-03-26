@@ -68,7 +68,6 @@ button{
   background:linear-gradient(45deg,#22c55e,#16a34a);
 }
 
-/* Notification */
 .popup{
   width:300px;
   background:#020617;
@@ -122,7 +121,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase
 import { getDatabase, ref, onValue, runTransaction } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
 
-/* CONFIG (UNCHANGED) */
 const firebaseConfig = {
   apiKey: "AIzaSyCc637WbfRNZ8-0CN4sEqEnGY27-oAdGiw",
   authDomain: "betpawa-6ef7e.firebaseapp.com",
@@ -144,14 +142,13 @@ const DAYS=12;
 
 let user=null;
 let investments={};
-let userData=null; // ✅ REALTIME USER DATA
+let userData=null;
 
 const overlay=document.getElementById("overlay");
 const popupBox=document.getElementById("popupBox");
 const popTitle=document.getElementById("popTitle");
 const popMsg=document.getElementById("popMsg");
 
-/* POPUP */
 function showPopup(type,title,msg){
   popupBox.className="popup "+type;
   popTitle.innerText=title;
@@ -166,7 +163,6 @@ function format(ms){
   return `${Math.floor(s/3600)}h ${Math.floor((s%3600)/60)}m ${s%60}s`;
 }
 
-/* RENDER */
 function render(){
   const box=document.getElementById("plans");
   box.innerHTML="";
@@ -220,7 +216,7 @@ function render(){
   });
 }
 
-/* ✅ FIXED INVEST */
+/* ✅ INVEST (FIXED BALANCE SYNC) */
 async function invest(amount){
 
   if(!user || !userData){
@@ -237,8 +233,12 @@ async function invest(amount){
 
   await runTransaction(ref(db,"users/"+uid),u=>{
     if(!u) return;
+
     u.balance -= amount;
+    u.withdrawableBalance = (u.withdrawableBalance||0) - amount; // ✅ SYNC
+
     u.lockedBalance = (u.lockedBalance||0) + total;
+
     return u;
   });
 
@@ -259,7 +259,7 @@ async function invest(amount){
   showPopup("success","Success","Investment started");
 }
 
-/* CLAIM */
+/* ✅ CLAIM (FIXED BALANCE SYNC) */
 async function claim(amount){
   const uid=user.uid;
   let pay=0,ok=false;
@@ -282,26 +282,24 @@ async function claim(amount){
   if(!ok) return showPopup("info","Please wait","Not yet time");
 
   await runTransaction(ref(db,"users/"+uid),u=>{
-    u.balance+=pay;
-    u.lockedBalance-=pay;
+    u.balance += pay;
+    u.withdrawableBalance = (u.withdrawableBalance||0) + pay; // ✅ SYNC
+    u.lockedBalance -= pay;
     return u;
   });
 
   showPopup("success","Success","Earnings received");
 }
 
-/* 🔥 REALTIME SYNC */
+/* REALTIME */
 onAuthStateChanged(auth,u=>{
   user=u;
 
   if(u){
-
-    /* ✅ USER DATA SYNC (THIS WAS MISSING) */
     onValue(ref(db,"users/"+u.uid),snap=>{
       userData = snap.val() || {};
     });
 
-    /* INVESTMENTS */
     onValue(ref(db,"investments/"+u.uid+"/12days"),snap=>{
       let raw=snap.val()||{};
       investments={};
@@ -310,7 +308,6 @@ onAuthStateChanged(auth,u=>{
       });
       render();
     });
-
   }else{
     render();
   }
@@ -320,4 +317,4 @@ setInterval(render,1000);
 </script>
 
 </body>
-</html>
+  </html>
