@@ -1,259 +1,296 @@
-<!DOCTYPE html>  
-<html lang="en">  
-<head>  
-<meta charset="UTF-8">  
-<meta name="viewport" content="width=device-width, initial-scale=1.0">  
-<title>Login | Quantum Apex Ug</title>  
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login | Quantum Apex Ug</title>
 
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">  
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
 
-<style>  
-* {  
-  margin: 0;  
-  padding: 0;  
-  box-sizing: border-box;  
-  font-family: 'Poppins', sans-serif;  
-}  
+<style>
+*{
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
+  font-family:'Poppins',sans-serif;
+}
 
-body {  
-  background: linear-gradient(135deg,#0f172a,#020617);  
-  display: flex;  
-  justify-content: center;  
-  align-items: center;  
-  height: 100vh;  
-  color: #fff;  
-}  
+body{
+  background: radial-gradient(circle at top,#020617,#0f172a 60%,#000);
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  min-height:100vh;
+  color:#fff;
+}
 
-.container {  
-  background: rgba(255,255,255,0.05);  
-  padding: 30px;  
-  border-radius: 15px;  
-  width: 350px;  
-  backdrop-filter: blur(12px);  
-  text-align: center;  
-}  
+/* HEADER */
+.header{
+  position:absolute;
+  top:20px;
+  width:100%;
+  text-align:center;
+  color:#38bdf8;
+  font-weight:600;
+  letter-spacing:3px;
+  text-shadow:0 0 15px rgba(56,189,248,0.6);
+}
 
-h2 {  
-  margin-bottom: 20px;  
-  color: #38bdf8;  
-}  
+/* CARD */
+.container{
+  width:360px;
+  padding:30px;
+  border-radius:20px;
+  background:linear-gradient(145deg,#020617,#0f172a);
+  border:1px solid rgba(56,189,248,0.2);
+  box-shadow:0 0 40px rgba(56,189,248,0.15);
+  text-align:center;
+}
 
-input {  
-  width: 100%;  
-  padding: 12px;  
-  margin: 8px 0;  
-  border-radius: 8px;  
-  border: none;  
-  outline: none;  
-}  
+h2{
+  margin-bottom:20px;
+  color:#38bdf8;
+}
 
-.login-btn {  
-  width: 100%;  
-  padding: 12px;  
-  margin-top: 10px;  
-  border: none;  
-  border-radius: 30px;  
-  background: linear-gradient(45deg,#38bdf8,#6366f1);  
-  color: #fff;  
-  cursor: pointer;  
-}  
+/* INPUTS */
+input{
+  width:100%;
+  padding:12px;
+  margin:8px 0;
+  border-radius:10px;
+  border:none;
+  outline:none;
+  background:#020617;
+  color:#fff;
+  border:1px solid rgba(148,163,184,0.2);
+  transition:0.2s;
+}
 
-.reset-btn {  
-  width: 100%;  
-  padding: 10px;  
-  margin-top: 10px;  
-  border: none;  
-  border-radius: 30px;  
-  background: linear-gradient(45deg,#22c55e,#16a34a);  
-  color: #fff;  
-  cursor: pointer;  
-}  
+input:focus{
+  border:1px solid #38bdf8;
+  box-shadow:0 0 10px rgba(56,189,248,0.3);
+}
 
-.links {  
-  margin-top: 10px;  
-}  
+/* BUTTONS */
+.login-btn{
+  width:100%;
+  padding:13px;
+  margin-top:10px;
+  border:none;
+  border-radius:30px;
+  background:linear-gradient(45deg,#38bdf8,#6366f1);
+  color:#fff;
+  cursor:pointer;
+  box-shadow:0 5px 20px rgba(56,189,248,0.4);
+}
 
-.links span {  
-  font-size: 13px;  
-  color: #94a3b8;  
-  cursor: pointer;  
-}  
+.reset-btn{
+  width:100%;
+  padding:11px;
+  margin-top:10px;
+  border:none;
+  border-radius:30px;
+  background:linear-gradient(45deg,#22c55e,#16a34a);
+  color:#fff;
+  cursor:pointer;
+}
 
-.links span:hover {  
-  color: #38bdf8;  
-}  
+/* LINKS */
+.links{
+  margin-top:12px;
+}
+.links span{
+  font-size:13px;
+  color:#94a3b8;
+  cursor:pointer;
+}
+.links span:hover{
+  color:#38bdf8;
+}
 
-.popup {  
-  position: fixed;  
-  top: 50%;  
-  left: 50%;  
-  transform: translate(-50%, -50%) scale(0.85);  
-  background: #020617;  
-  padding: 20px 30px;  
-  border-radius: 12px;  
-  text-align: center;  
-  opacity: 0;  
-  transition: 0.25s ease;  
-  z-index: 1000;  
-}  
+/* LOADER */
+.loader-overlay{
+  position:fixed;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  background:rgba(0,0,0,0.6);
+  display:none;
+  justify-content:center;
+  align-items:center;
+  z-index:2000;
+}
+.loader{
+  width:50px;
+  height:50px;
+  border:5px solid #38bdf8;
+  border-top:5px solid transparent;
+  border-radius:50%;
+  animation:spin 1s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg);}}
 
-.popup.show {  
-  opacity: 1;  
-  transform: translate(-50%, -50%) scale(1);  
-}  
+/* TOAST POPUP */
+.popup{
+  position:fixed;
+  top:50%;
+  left:50%;
+  transform:translate(-50%,-50%) scale(0.85);
+  background:#020617;
+  padding:20px 30px;
+  border-radius:12px;
+  text-align:center;
+  opacity:0;
+  transition:0.25s;
+  z-index:3000;
+}
 
-.popup.success {  
-  border: 2px solid #22c55e;  
-}  
+.popup.show{
+  opacity:1;
+  transform:translate(-50%,-50%) scale(1);
+}
 
-.popup.error {  
-  border: 2px solid #ef4444;  
-}  
+.popup.success{border:2px solid #22c55e;}
+.popup.error{border:2px solid #ef4444;}
+</style>
+</head>
 
-.popup h3 {  
-  font-size: 16px;  
-}  
+<body>
 
-.popup p {  
-  margin-top: 6px;  
-  font-size: 14px;  
-}  
-</style>  
-</head>  
+<div class="header">QUANTUM APEX UG</div>
 
-<body>  
+<div class="container">
+  <h2>Login</h2>
 
-<div class="container">  
-  <h2>Login</h2>  
+  <input type="email" id="email" placeholder="Email Address">
+  <input type="password" id="password" placeholder="Password">
 
-  <input type="email" id="email" placeholder="Email Address">  
-  <input type="password" id="password" placeholder="Password">  
+  <button class="login-btn" onclick="login()">Login</button>
+  <button class="reset-btn" onclick="forgotPassword()">Reset Password</button>
 
-  <button class="login-btn" onclick="login()">Login</button>  
+  <div class="links">
+    <span onclick="goRegister()">Create Account</span>
+  </div>
+</div>
 
-  <button class="reset-btn" onclick="forgotPassword()">Reset Password</button>  
+<!-- LOADER -->
+<div class="loader-overlay" id="loader">
+  <div class="loader"></div>
+</div>
 
-  <div class="links">  
-    <span onclick="goRegister()">Create Account</span>  
-  </div>  
-</div>  
+<!-- TOAST -->
+<div id="popup" class="popup">
+  <p id="popupMsg"></p>
+</div>
 
-<div id="popup" class="popup">  
-  <h3 id="popupTitle"></h3>  
-  <p id="popupMsg"></p>  
-</div>  
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 
-<script type="module">  
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";  
+import {
+  getAuth,
+  signInWithEmailAndPassword,
+  sendPasswordResetEmail,
+  setPersistence,
+  browserLocalPersistence
+} from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
 
-import {   
-  getAuth,   
-  signInWithEmailAndPassword,   
-  sendPasswordResetEmail,  
-  setPersistence,  
-  browserLocalPersistence  
-} from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";  
+import {
+  getDatabase,
+  ref,
+  onValue
+} from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 
-import {   
-  getDatabase,   
-  ref,   
-  onValue   
-} from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";  
+/* CONFIG */
+const firebaseConfig = {
+  apiKey: "AIzaSyCc637WbfRNZ8-0CN4sEqEnGY27-oAdGiw",
+  authDomain: "betpawa-6ef7e.firebaseapp.com",
+  databaseURL: "https://betpawa-6ef7e-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "betpawa-6ef7e",
+  storageBucket: "betpawa-6ef7e.firebasestorage.app",
+  messagingSenderId: "908050081607",
+  appId: "1:908050081607:web:db6e861fca63df78584e62"
+};
 
-const firebaseConfig = {  
-  apiKey: "AIzaSyCc637WbfRNZ8-0CN4sEqEnGY27-oAdGiw",  
-  authDomain: "betpawa-6ef7e.firebaseapp.com",  
-  databaseURL: "https://betpawa-6ef7e-default-rtdb.europe-west1.firebasedatabase.app",  
-  projectId: "betpawa-6ef7e",  
-  storageBucket: "betpawa-6ef7e.firebasestorage.app",  
-  messagingSenderId: "908050081607",  
-  appId: "1:908050081607:web:db6e861fca63df78584e62"  
-};  
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getDatabase(app);
 
-const app = initializeApp(firebaseConfig);  
-const auth = getAuth(app);  
-const db = getDatabase(app);  
+const loader = document.getElementById("loader");
 
-function showPopup(title, message, type){  
-  const popup = document.getElementById("popup");  
-  popup.className = "popup show " + type;  
+/* TOAST */
+function showPopup(msg,type){
+  const popup=document.getElementById("popup");
+  popup.className="popup show "+type;
+  document.getElementById("popupMsg").innerText=msg;
+  setTimeout(()=>popup.classList.remove("show"),2000);
+}
 
-  document.getElementById("popupTitle").innerText = title;  
-  document.getElementById("popupMsg").innerText = message;  
+/* LOGIN */
+window.login = async function(){
 
-  setTimeout(()=>{  
-    popup.classList.remove("show");  
-  },2200);  
-}  
+  let email = document.getElementById("email").value.trim();
+  let password = document.getElementById("password").value;
 
-/* LOGIN (FIXED) */
-window.login = async function(){  
-  let email = document.getElementById("email").value.trim();  
-  let password = document.getElementById("password").value;  
+  if(!email || !password){
+    return showPopup("Fill all fields","error");
+  }
 
-  if(!email || !password){  
-    return showPopup("", "Fill in the required fields", "error");  
-  }  
+  loader.style.display="flex";
 
   try{
-    /* ✅ IMPORTANT: KEEP USER LOGGED IN */
     await setPersistence(auth, browserLocalPersistence);
 
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);  
-    const user = userCredential.user;  
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    const user = userCredential.user;
 
-    showPopup("Success","Login successful","success");  
+    /* SYNC USER */
+    onValue(ref(db,"users/"+user.uid),(snap)=>{
+      localStorage.setItem("userData",JSON.stringify(snap.val()));
+    });
 
-    /* SYNC USER DATA */
-    const userRef = ref(db, "users/" + user.uid);  
+    showPopup("Login successful","success");
 
-    onValue(userRef, (snapshot) => {  
-      const data = snapshot.val();  
-      localStorage.setItem("userData", JSON.stringify(data));  
-    });  
+    setTimeout(()=>{
+      location.href="dashboard.html";
+    },1200);
 
-    setTimeout(()=>{  
-      window.location.href = "dashboard.html";  
-    },1200);  
+  }catch(error){
 
-  }catch(error){  
-    let msg = "Invalid credentials";  
+    let msg="Login failed";
 
-    if(error.code === "auth/invalid-email"){  
-      msg = "Invalid email format";  
-    }  
-    if(error.code === "auth/user-not-found"){  
-      msg = "Account not found";  
-    }  
-    if(error.code === "auth/wrong-password"){  
-      msg = "Wrong password";  
-    }  
+    if(error.code==="auth/invalid-email") msg="Invalid email";
+    if(error.code==="auth/user-not-found") msg="Account not found";
+    if(error.code==="auth/wrong-password") msg="Wrong password";
 
-    showPopup("", msg, "error");  
-  }  
-}  
+    showPopup(msg,"error");
+  }
 
-/* RESET PASSWORD */
-window.forgotPassword = function(){  
-  let email = document.getElementById("email").value;  
+  loader.style.display="none";
+}
 
-  if(!email){  
-    return showPopup("", "Enter your email", "error");  
-  }  
+/* RESET */
+window.forgotPassword = function(){
 
-  sendPasswordResetEmail(auth, email)  
-  .then(() => {  
-    showPopup("Success","Password reset email sent","success");  
-  })  
-  .catch(() => {  
-    showPopup("", "Unable to process request", "error");  
-  });  
-}  
+  let email=document.getElementById("email").value.trim();
 
-window.goRegister = function(){  
-  window.location.href = "register.html";  
-}  
-</script>  
+  if(!email){
+    return showPopup("Enter your email","error");
+  }
 
-</body>  
-  </html>
+  sendPasswordResetEmail(auth,email)
+  .then(()=>{
+    showPopup("Reset email sent","success");
+  })
+  .catch(()=>{
+    showPopup("Failed to send email","error");
+  });
+}
+
+window.goRegister = function(){
+  location.href="register.html";
+}
+</script>
+
+</body>
+</html>
