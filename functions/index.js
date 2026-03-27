@@ -4,7 +4,7 @@ const admin = require("firebase-admin");
 admin.initializeApp();
 const db = admin.database();
 
-/* ✅ PERCENTAGES */
+/* ✅ CORRECT PERCENTAGES */
 const PLANS = {
   150000: 0.15,
   500000: 0.25,
@@ -15,7 +15,7 @@ const PLANS = {
 const DAYS = 12;
 const DAY_MS = 86400000;
 
-/* INVEST */
+/* 🔒 INVEST */
 exports.investPlan = functions.https.onCall(async (data, context) => {
 
   if (!context.auth) {
@@ -23,10 +23,10 @@ exports.investPlan = functions.https.onCall(async (data, context) => {
   }
 
   const uid = context.auth.uid;
-  const amount = data.amount;
+  const amount = Number(data.amount);
 
   if (!PLANS[amount]) {
-    throw new functions.https.HttpsError("invalid-argument", "Invalid plan");
+    throw new functions.https.HttpsError("invalid-argument", "Invalid plan selected");
   }
 
   const percent = PLANS[amount];
@@ -36,49 +36,46 @@ exports.investPlan = functions.https.onCall(async (data, context) => {
   const userRef = db.ref("users/" + uid);
   const investRef = db.ref(`investments/${uid}/12days/${amount}`);
 
-  return userRef.transaction(user => {
+  const userSnap = await userRef.get();
+  const user = userSnap.val();
 
-    if (!user) return user;
+  if (!user || (user.balance || 0) < amount) {
+    throw new functions.https.HttpsError(
+      "failed-precondition",
+      "Insufficient balance to invest"
+    );
+  }
 
-    if ((user.balance || 0) < amount) {
-      throw new functions.https.HttpsError(
-        "failed-precondition",
-        "Insufficient balance,to up your account to invest in this plan"
-      );
-    }
+  const existing = await investRef.get();
+  if (existing.exists()) {
+    throw new functions.https.HttpsError(
+      "already-exists",
+      "You already invested in this plan"
+    );
+  }
 
-    user.balance -= amount;
-    user.lockedBalance = (user.lockedBalance || 0) + total;
-
-    return user;
-
-  }).then(async () => {
-
-    const snap = await investRef.get();
-
-    if (snap.exists()) {
-      throw new functions.https.HttpsError(
-        "already-exists",
-        "You already invested in this plan"
-      );
-    }
-
-    await investRef.set({
-      amount,
-      daily,
-      total,
-      remaining: total,
-      startTime: Date.now(),
-      lastClaim: 0,
-      daysClaimed: 0,
-      completed: false
-    });
-
-    return { success: true };
+  /* ✅ SAFE UPDATE */
+  await userRef.update({
+    balance: (user.balance || 0) - amount,
+    lockedBalance: (user.lockedBalance || 0) + total
   });
+
+  await investRef.set({
+    amount,
+    daily,
+    total,
+    remaining: total,
+    startTime: Date.now(),
+    lastClaim: 0,
+    daysClaimed: 0,
+    completed: false
+  });
+
+  return { success: true };
 });
 
-/* CLAIM */
+
+/* 🔒 CLAIM */
 exports.claimEarnings = functions.https.onCall(async (data, context) => {
 
   if (!context.auth) {
@@ -86,45 +83,43 @@ exports.claimEarnings = functions.https.onCall(async (data, context) => {
   }
 
   const uid = context.auth.uid;
-  const amount = data.amount;
+  const amount = Number(data.amount);
 
   const investRef = db.ref(`investments/${uid}/12days/${amount}`);
   const userRef = db.ref("users/" + uid);
 
-  let payout = 0;
+  const snap = await investRef.get();
+  const inv = snap.val();
 
-  await investRef.transaction(inv => {
+  if (!inv) {
+    throw new functions.https.HttpsError("not-found", "No investment found");
+  }
 
-    if (!inv) {
-      throw new functions.https.HttpsError("not-found", "No investment found");
-    }
+  const last = inv.lastClaim || inv.startTime;
 
-    const last = inv.lastClaim || inv.startTime;
+  if (Date.now() < last + DAY_MS) {
+    throw new functions.https.HttpsError("failed-precondition", "Not yet time");
+  }
 
-    if (Date.now() < last + DAY_MS) {
-      throw new functions.https.HttpsError("failed-precondition", "Not yet time");
-    }
+  if (inv.completed) {
+    throw new functions.https.HttpsError("failed-precondition", "Plan completed");
+  }
 
-    payout = Math.floor(inv.daily);
+  const payout = Math.floor(inv.daily);
 
-    inv.lastClaim = Date.now();
-    inv.daysClaimed += 1;
-    inv.remaining -= payout;
-
-    if (inv.daysClaimed >= DAYS) {
-      inv.completed = true;
-    }
-
-    return inv;
+  await investRef.update({
+    lastClaim: Date.now(),
+    daysClaimed: inv.daysClaimed + 1,
+    remaining: inv.remaining - payout,
+    completed: inv.daysClaimed + 1 >= DAYS
   });
 
-  await userRef.transaction(user => {
-    if (!user) return user;
+  const userSnap = await userRef.get();
+  const user = userSnap.val();
 
-    user.balance += payout;
-    user.lockedBalance -= payout;
-
-    return user;
+  await userRef.update({
+    balance: (user.balance || 0) + payout,
+    lockedBalance: (user.lockedBalance || 0) - payout
   });
 
   return { success: true, payout };
