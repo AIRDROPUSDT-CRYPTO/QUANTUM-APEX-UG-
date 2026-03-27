@@ -85,19 +85,23 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase
 import { getDatabase, ref, onValue, get, update, set } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
 
-/* CONFIG */
+/* ✅ YOUR REAL CONFIG */
 const firebaseConfig = {
   apiKey: "AIzaSyCc637WbfRNZ8-0CN4sEqEnGY27-oAdGiw",
   authDomain: "betpawa-6ef7e.firebaseapp.com",
   databaseURL: "https://betpawa-6ef7e-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "betpawa-6ef7e"
+  projectId: "betpawa-6ef7e",
+  storageBucket: "betpawa-6ef7e.firebasestorage.app",
+  messagingSenderId: "908050081607",
+  appId: "1:908050081607:web:db6e861fca63df78584e62",
+  measurementId: "G-C7M7HWTD01"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const auth = getAuth(app);
 
-/* ✅ PLANS */
+/* PLANS */
 const plans = [
   {amount:1000000, percent:50},
   {amount:5000000, percent:50}
@@ -112,8 +116,8 @@ let currentUser = null;
 const toast = document.getElementById("toast");
 
 /* ✅ FORMAT */
-function formatMoney(num){
-  return Number(num).toLocaleString();
+function formatUGX(num){
+  return Math.floor(num).toLocaleString() + " UGX";
 }
 
 /* TOAST */
@@ -137,6 +141,7 @@ async function invest(amount){
 
   const uid=currentUser.uid;
   const plan = plans.find(p=>p.amount===amount);
+  const percent = plan.percent / 100;
 
   const userRef = ref(db,"users/"+uid);
   const investRef = ref(db,`investments/${uid}/3days/${amount}`);
@@ -147,14 +152,14 @@ async function invest(amount){
     return showToast("warning","Insufficient balance");
   }
 
-  const exist = await get(investRef);
-  if(exist.exists()){
+  if((await get(investRef)).exists()){
     return showToast("info","Already invested");
   }
 
-  const percent = plan.percent / 100;
   const daily = amount * percent;
-  const total = daily * DAYS;
+
+  /* ✅ CORRECT TOTAL */
+  const total = amount + (daily * DAYS);
 
   await update(userRef,{
     balance:(user.balance||0)-amount,
@@ -164,6 +169,9 @@ async function invest(amount){
   await set(investRef,{
     amount,
     percent: plan.percent,
+    daily,
+    total,
+    remaining: total,
     startTime: Date.now(),
     lastClaim: 0,
     daysClaimed: 0,
@@ -185,9 +193,6 @@ async function claim(amount){
   const inv = (await get(investRef)).val();
   if(!inv) return;
 
-  const percent = inv.percent / 100;
-  const daily = inv.amount * percent;
-
   const last = inv.lastClaim || inv.startTime;
 
   if(Date.now() < last + DAY_MS){
@@ -195,14 +200,20 @@ async function claim(amount){
   }
 
   if(inv.completed){
-    return showToast("info","Plan completed");
+    return showToast("info","Completed");
   }
 
-  const payout = Math.floor(daily);
+  let payout = inv.daily;
+
+  /* ✅ RETURN CAPITAL LAST DAY */
+  if(inv.daysClaimed + 1 === DAYS){
+    payout += inv.amount;
+  }
 
   await update(investRef,{
     lastClaim: Date.now(),
     daysClaimed: inv.daysClaimed + 1,
+    remaining: inv.remaining - payout,
     completed: (inv.daysClaimed + 1) >= DAYS
   });
 
@@ -213,7 +224,7 @@ async function claim(amount){
     lockedBalance:(user.lockedBalance||0)-payout
   });
 
-  showToast("success","Earnings received");
+  showToast("success","Received " + formatUGX(payout));
 }
 
 /* UI */
@@ -227,17 +238,20 @@ function render(){
     div.className="plan";
 
     const daily = p.amount * (p.percent/100);
-    const total = daily * DAYS;
+    const total = p.amount + (daily * DAYS);
 
     if(inv){
       let last=inv.lastClaim||inv.startTime;
       let time=(last+DAY_MS)-Date.now();
 
+      /* ✅ FORCE CORRECT TOTAL EVEN FOR OLD DATA */
+      const fixedTotal = inv.amount + (inv.daily * DAYS);
+
       div.innerHTML=`
-        <h3>${formatMoney(p.amount)} UGX</h3>
+        <h3>${formatUGX(inv.amount)}</h3>
         <p>Days Remaining: <span class="amount-days">${DAYS-inv.daysClaimed}</span></p>
-        <p>Daily Profit: <span class="amount-percent">${formatMoney(daily)} UGX</span></p>
-        <p>Total Payout: <span class="amount-payout">${formatMoney(total)} UGX</span></p>
+        <p>Daily Profit: <span class="amount-percent">${formatUGX(inv.daily)}</span></p>
+        <p>Total Payout: <span class="amount-payout">${formatUGX(fixedTotal)}</span></p>
         <p>${format(time)}</p>
       `;
 
@@ -251,11 +265,12 @@ function render(){
       div.appendChild(btn);
 
     }else{
+
       div.innerHTML=`
-        <h3>${formatMoney(p.amount)} UGX</h3>
+        <h3>${formatUGX(p.amount)}</h3>
         <p>Duration: <span class="amount-days">${DAYS} Days</span></p>
-        <p>Daily Profit: <span class="amount-percent">${p.percent}% (${formatMoney(daily)} UGX)</span></p>
-        <p>Total Payout: <span class="amount-payout">${formatMoney(total)} UGX</span></p>
+        <p>Daily Profit: <span class="amount-percent">${formatUGX(daily)}</span></p>
+        <p>Total Payout: <span class="amount-payout">${formatUGX(total)}</span></p>
       `;
 
       let btn=document.createElement("button");
