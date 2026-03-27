@@ -1,238 +1,252 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Referrals | Quantum Apex Ug</title>
-
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
-
-<style>
-*{margin:0;padding:0;box-sizing:border-box;font-family:'Poppins',sans-serif;}
-
-body{
-  background:linear-gradient(135deg,#020617,#020617,#0f172a);
-  color:#fff;
-}
-
-.topbar{
-  padding:15px;
-  text-align:center;
-  font-weight:600;
-  background:rgba(15,23,42,0.7);
-  backdrop-filter:blur(10px);
-}
-
-.container{padding:20px;}
-
-.card{
-  background:linear-gradient(135deg,#0f172a,#1e293b);
-  padding:20px;
-  border-radius:18px;
-  box-shadow:0 15px 35px rgba(0,0,0,0.5);
-  margin-bottom:15px;
-}
-
-.title{
-  font-size:15px;
-  margin-bottom:10px;
-  color:#38bdf8;
-}
-
-.link-box{
-  background:#020617;
-  padding:12px;
-  border-radius:10px;
-  font-size:13px;
-  word-break:break-all;
-  margin-bottom:10px;
-  border:1px solid rgba(148,163,184,0.2);
-}
-
-.copy-btn{
-  width:100%;
-  padding:12px;
-  border:none;
-  border-radius:25px;
-  background:linear-gradient(45deg,#38bdf8,#6366f1);
-  color:#fff;
-  cursor:pointer;
-  font-weight:600;
-}
-
-.stats{
-  text-align:center;
-  margin-top:10px;
-}
-
-.stats h2{
-  font-size:28px;
-  color:#22c55e;
-}
-
-.stats p{
-  font-size:13px;
-  color:#94a3b8;
-}
-
-.info{
-  font-size:13px;
-  line-height:1.6;
-  color:#cbd5f5;
-}
-
-.popup{
-  position:fixed;
-  top:20px;
-  left:50%;
-  transform:translateX(-50%);
-  background:#020617;
-  padding:12px 20px;
-  border-radius:10px;
-  opacity:0;
-  transition:0.3s;
-  z-index:1000;
-}
-
-.popup.show{opacity:1;}
-.popup.success{border:2px solid #22c55e;}
-.popup.error{border:2px solid #ef4444;}
-</style>
-</head>
-
-<body>
-
-<div class="topbar">Referral Program</div>
-
-<div class="container">
-
-  <div class="card">
-    <div class="title">Your Referral Link</div>
-    <div id="refLink" class="link-box">Loading...</div>
-    <button class="copy-btn" onclick="copyLink()">Copy Link</button>
-  </div>
-
-  <div class="card stats">
-    <h2 id="refCount">0</h2>
-    <p>Total Referrals</p>
-  </div>
-
-  <div class="card">
-    <div class="title">How Referral Rewards Work</div>
-    <div class="info">
-      • Earn <b>10% bonus</b> on your referral's <b>first deposit only</b><br><br>
-      • Bonus is credited instantly to your <b>Main Balance</b><br><br>
-      • Each referral can generate <b>only one reward</b><br><br>
-      • No duplicate or repeated bonuses are allowed<br><br>
-      • Rewards are processed automatically once deposit is detected
-    </div>
-  </div>
-
-</div>
-
-<div id="popup" class="popup">
-  <p id="popupMsg"></p>
-</div>
-
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
-
-/* ✅ UPDATED CONFIG */
-const firebaseConfig = {
-  apiKey: "AIzaSyCc637WbfRNZ8-0CN4sEqEnGY27-oAdGiw",
-  authDomain: "betpawa-6ef7e.firebaseapp.com",
-  databaseURL: "https://betpawa-6ef7e-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "betpawa-6ef7e",
-  storageBucket: "betpawa-6ef7e.firebasestorage.app",
-  messagingSenderId: "908050081607",
-  appId: "1:908050081607:web:db6e861fca63df78584e62",
-  measurementId: "G-C7M7HWTD01"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
-const auth = getAuth(app);
-
-let currentLink = "";
-let myUsername = "";
-
-function showPopup(msg,type){
-  const popup = document.getElementById("popup");
-  popup.className = "popup show " + type;
-  document.getElementById("popupMsg").innerText = msg;
-  setTimeout(()=> popup.classList.remove("show"),2000);
-}
-
-window.copyLink = function(){
-  if(!currentLink) return;
-
-  navigator.clipboard.writeText(currentLink)
-  .then(()=> showPopup("Link copied","success"))
-  .catch(()=> showPopup("Copy failed","error"));
-}
-
-onAuthStateChanged(auth, user => {
-
-  if(!user){
-    showPopup("User not authenticated","error");
-    return;
-  }
-
-  const userRef = ref(db,"users/" + user.uid);
-
-  onValue(userRef, snap => {
-    const data = snap.val();
-    if(!data) return;
-
-    myUsername = data.username;
-
-    currentLink = "https://airdropusdt-crypto.github.io/QUANTUM-APEX-UG-/register.html?ref=" + myUsername;
-
-    document.getElementById("refLink").innerText = currentLink;
-
-    onValue(ref(db,"users"), usersSnap => {
-
-      let count = 0;
-
-      usersSnap.forEach(child => {
-        const u = child.val();
-        const uid = child.key;
-
-        if(u.referral === myUsername){
-          count++;
-        }
-
-        if(
-          u.referral === myUsername &&
-          u.firstDeposit > 0 &&
-          !u.refBonusPaid
-        ){
-          let bonus = Math.floor(u.firstDeposit * 0.10);
-
-          const myRef = ref(db,"users/" + user.uid);
-
-          update(myRef,{
-            balance: (data.balance || 0) + bonus
-          });
-
-          update(ref(db,"users/" + uid),{
-            refBonusPaid: true
-          });
-
-          showPopup("You earned "+bonus+" UGX referral bonus","success");
-        }
-
-      });
-
-      document.getElementById("refCount").innerText = count;
-    });
-
-  });
-
-});
-</script>
-
-</body>
+<!DOCTYPE html>  
+<html lang="en">  
+<head>  
+<meta charset="UTF-8">  
+<meta name="viewport" content="width=device-width, initial-scale=1.0">  
+<title>Referrals | Quantum Apex Ug</title>  
+  
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">  
+  
+<style>  
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Poppins',sans-serif;}  
+  
+body{  
+  background:linear-gradient(135deg,#020617,#020617,#0f172a);  
+  color:#fff;  
+}  
+  
+.topbar{  
+  padding:15px;  
+  text-align:center;  
+  font-weight:600;  
+  background:rgba(15,23,42,0.7);  
+  backdrop-filter:blur(10px);  
+}  
+  
+.container{padding:20px;}  
+  
+.card{  
+  background:linear-gradient(135deg,#0f172a,#1e293b);  
+  padding:20px;  
+  border-radius:18px;  
+  box-shadow:0 15px 35px rgba(0,0,0,0.5);  
+  margin-bottom:15px;  
+}  
+  
+.title{  
+  font-size:15px;  
+  margin-bottom:10px;  
+  color:#38bdf8;  
+}  
+  
+.link-box{  
+  background:#020617;  
+  padding:12px;  
+  border-radius:10px;  
+  font-size:18px;  
+  text-align:center;  
+  letter-spacing:2px;  
+  margin-bottom:10px;  
+  border:1px solid rgba(148,163,184,0.2);  
+}  
+  
+.copy-btn{  
+  width:100%;  
+  padding:12px;  
+  border:none;  
+  border-radius:25px;  
+  background:linear-gradient(45deg,#38bdf8,#6366f1);  
+  color:#fff;  
+  cursor:pointer;  
+  font-weight:600;  
+}  
+  
+.stats{  
+  text-align:center;  
+  margin-top:10px;  
+}  
+  
+.stats h2{  
+  font-size:28px;  
+  color:#22c55e;  
+}  
+  
+.stats p{  
+  font-size:13px;  
+  color:#94a3b8;  
+}  
+  
+.info{  
+  font-size:13px;  
+  line-height:1.6;  
+  color:#cbd5f5;  
+}  
+  
+.popup{  
+  position:fixed;  
+  top:20px;  
+  left:50%;  
+  transform:translateX(-50%);  
+  background:#020617;  
+  padding:12px 20px;  
+  border-radius:10px;  
+  opacity:0;  
+  transition:0.3s;  
+  z-index:1000;  
+}  
+  
+.popup.show{opacity:1;}  
+.popup.success{border:2px solid #22c55e;}  
+.popup.error{border:2px solid #ef4444;}  
+</style>  
+</head>  
+  
+<body>  
+  
+<div class="topbar">Referral Program</div>  
+  
+<div class="container">  
+  
+  <div class="card">  
+    <div class="title">Your Referral Code</div>  
+    <div id="refCode" class="link-box">Loading...</div>  
+    <button class="copy-btn" onclick="copyCode()">Copy Code</button>  
+  </div>  
+  
+  <div class="card stats">  
+    <h2 id="refCount">0</h2>  
+    <p>Total Referrals</p>  
+  </div>  
+  
+  <div class="card">  
+    <div class="title">How Referral Rewards Work</div>  
+    <div class="info">  
+      • Earn <b>10% bonus</b> on your referral's <b>first deposit only</b><br><br>  
+      • Bonus is credited instantly to your <b>Main Balance</b><br><br>  
+      • Each referral can generate <b>only one reward</b><br><br>  
+      • No duplicate or repeated bonuses are allowed<br><br>  
+      • Rewards are processed automatically once deposit is detected  
+    </div>  
+  </div>  
+  
+</div>  
+  
+<div id="popup" class="popup">  
+  <p id="popupMsg"></p>  
+</div>  
+  
+<script type="module">  
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";  
+import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";  
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";  
+  
+/* ✅ CONFIG */  
+const firebaseConfig = {  
+  apiKey: "AIzaSyCc637WbfRNZ8-0CN4sEqEnGY27-oAdGiw",  
+  authDomain: "betpawa-6ef7e.firebaseapp.com",  
+  databaseURL: "https://betpawa-6ef7e-default-rtdb.europe-west1.firebasedatabase.app",  
+  projectId: "betpawa-6ef7e",  
+  storageBucket: "betpawa-6ef7e.firebasestorage.app",  
+  messagingSenderId: "908050081607",  
+  appId: "1:908050081607:web:db6e861fca63df78584e62",  
+  measurementId: "G-C7M7HWTD01"  
+};  
+  
+const app = initializeApp(firebaseConfig);  
+const db = getDatabase(app);  
+const auth = getAuth(app);  
+  
+let myCode = "";  
+  
+/* GENERATE CODE */  
+function generateCode(){  
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";  
+  let code = "";  
+  for(let i=0;i<6;i++){  
+    code += chars[Math.floor(Math.random()*chars.length)];  
+  }  
+  return code;  
+}  
+  
+function showPopup(msg,type){  
+  const popup = document.getElementById("popup");  
+  popup.className = "popup show " + type;  
+  document.getElementById("popupMsg").innerText = msg;  
+  setTimeout(()=> popup.classList.remove("show"),2000);  
+}  
+  
+window.copyCode = function(){  
+  if(!myCode) return;  
+  
+  navigator.clipboard.writeText(myCode)  
+  .then(()=> showPopup("Code copied","success"))  
+  .catch(()=> showPopup("Copy failed","error"));  
+}  
+  
+onAuthStateChanged(auth, user => {  
+  
+  if(!user){  
+    showPopup("User not authenticated","error");  
+    return;  
+  }  
+  
+  const userRef = ref(db,"users/" + user.uid);  
+  
+  onValue(userRef, snap => {  
+    const data = snap.val();  
+    if(!data) return;  
+  
+    /* CREATE CODE IF NOT EXISTS */  
+    if(!data.refCode){  
+      myCode = generateCode();  
+  
+      update(userRef,{ refCode: myCode });  
+    } else {  
+      myCode = data.refCode;  
+    }  
+  
+    document.getElementById("refCode").innerText = myCode;  
+  
+    /* COUNT + BONUS */  
+    onValue(ref(db,"users"), usersSnap => {  
+  
+      let count = 0;  
+  
+      usersSnap.forEach(child => {  
+        const u = child.val();  
+        const uid = child.key;  
+  
+        if(u.referredBy === myCode){  
+          count++;  
+        }  
+  
+        if(  
+          u.referredBy === myCode &&  
+          u.firstDeposit > 0 &&  
+          !u.refBonusPaid  
+        ){  
+          let bonus = Math.floor(u.firstDeposit * 0.10);  
+  
+          update(ref(db,"users/" + user.uid),{  
+            balance: (data.balance || 0) + bonus  
+          });  
+  
+          update(ref(db,"users/" + uid),{  
+            refBonusPaid: true  
+          });  
+  
+          showPopup("You earned "+bonus+" UGX referral bonus","success");  
+        }  
+  
+      });  
+  
+      document.getElementById("refCount").innerText = count;  
+    });  
+  
+  });  
+  
+});  
+</script>  
+  
+</body>  
 </html>
