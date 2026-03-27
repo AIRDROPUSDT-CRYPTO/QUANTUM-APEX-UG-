@@ -15,7 +15,6 @@ body{
   color:#fff;
 }
 
-/* TOPBAR */
 .topbar{
   padding:15px;
   text-align:center;
@@ -24,7 +23,6 @@ body{
   backdrop-filter:blur(10px);
 }
 
-/* CONTAINER */
 .container{padding:20px;}
 
 .section-title{
@@ -33,7 +31,6 @@ body{
   color:#38bdf8;
 }
 
-/* 🔥 FINTECH CARD */
 .card{
   position:relative;
   background:linear-gradient(135deg,#0f172a,#020617);
@@ -41,14 +38,12 @@ body{
   border-radius:18px;
   margin-bottom:14px;
   overflow:hidden;
-
   box-shadow:
     0 0 0 1px rgba(56,189,248,0.1),
     0 0 30px rgba(56,189,248,0.15),
     inset 0 0 25px rgba(255,255,255,0.02);
 }
 
-/* glowing border */
 .card::before{
   content:"";
   position:absolute;
@@ -62,10 +57,8 @@ body{
   -webkit-mask-composite:xor;
   mask-composite:exclude;
   opacity:0.4;
-  pointer-events:none;
 }
 
-/* HEADER */
 .header{
   display:flex;
   justify-content:space-between;
@@ -78,7 +71,6 @@ body{
   color:#38bdf8;
 }
 
-/* STATUS */
 .status{
   font-size:11px;
   padding:4px 10px;
@@ -95,14 +87,12 @@ body{
   color:#94a3b8;
 }
 
-/* DETAILS */
 .details{
   margin-top:10px;
   font-size:13px;
   color:#94a3b8;
 }
 
-/* COUNTDOWN */
 .countdown{
   margin-top:12px;
   font-size:14px;
@@ -110,7 +100,6 @@ body{
   color:#22c55e;
 }
 
-/* EMPTY */
 .empty{
   text-align:center;
   margin-top:40px;
@@ -122,12 +111,11 @@ body{
 <body>
 
 <div class="topbar">My Investments</div>
-
 <div class="container" id="container"></div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+import { getDatabase, ref, onValue, off } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
 
 /* CONFIG */
@@ -147,6 +135,9 @@ const auth = getAuth(app);
 
 const container = document.getElementById("container");
 
+let unsubscribe = null;
+let timers = [];
+
 /* PLAN DURATIONS */
 const durations = {
   "24hrs": 1,
@@ -157,15 +148,12 @@ const durations = {
   "36days": 36
 };
 
-/* FORMAT */
 function formatMoney(a){
   return Number(a).toLocaleString()+" UGX";
 }
 
-/* ⏱ COUNTDOWN (REAL TIME, NO RESET) */
 function getRemaining(end){
   let diff = end - Date.now();
-
   if(diff <= 0) return "Completed";
 
   let d=Math.floor(diff/86400000);
@@ -176,14 +164,17 @@ function getRemaining(end){
   return `${d}d ${h}h ${m}m ${s}s`;
 }
 
+/* CLEAR OLD TIMERS */
+function clearTimers(){
+  timers.forEach(t=>clearInterval(t));
+  timers=[];
+}
+
 /* CREATE CARD */
 function createCard(planName, inv){
 
   let days = durations[planName] || 0;
-
-  // 🔥 IMPORTANT: uses stored startTime → no reset
   let end = inv.startTime + (days * 86400000);
-
   let done = Date.now() >= end;
 
   let div = document.createElement("div");
@@ -208,20 +199,21 @@ function createCard(planName, inv){
     </div>
   `;
 
-  /* 🔥 LIVE TIMER (EVERY SECOND) */
   if(!done){
-    setInterval(()=>{
+    let interval = setInterval(()=>{
       let el=document.getElementById(id);
       if(el){
         let txt = getRemaining(end);
         el.innerText = txt;
 
-        // auto switch to completed UI
         if(txt === "Completed"){
+          clearInterval(interval);
           location.reload();
         }
       }
     },1000);
+
+    timers.push(interval);
   }
 
   return {div, done};
@@ -230,6 +222,7 @@ function createCard(planName, inv){
 /* RENDER */
 function render(allData){
 
+  clearTimers(); // 🔥 prevent duplicate timers
   container.innerHTML="";
 
   let activeSection=document.createElement("div");
@@ -264,14 +257,18 @@ function render(allData){
   }
 }
 
-/* 🔥 REALTIME FIREBASE SYNC */
+/* REALTIME SYNC */
 onAuthStateChanged(auth,user=>{
   if(!user){
     window.location.href="login.html";
     return;
   }
 
-  onValue(ref(db,"investments/"+user.uid),snap=>{
+  const userRef = ref(db,"investments/"+user.uid);
+
+  if(unsubscribe) off(userRef); // 🔥 prevent duplicate listener
+
+  unsubscribe = onValue(userRef,(snap)=>{
     let data = snap.val() || {};
     render(data);
   });
