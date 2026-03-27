@@ -82,9 +82,8 @@ button{
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+import { getDatabase, ref, onValue, get, update, set } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
-import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-functions.js";
 
 /* CONFIG */
 const firebaseConfig = {
@@ -101,13 +100,6 @@ const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const auth = getAuth(app);
 
-/* ✅ FIXED (NO REGION HARD-CODING) */
-const functions = getFunctions(app);
-
-/* ✅ CALLABLE */
-const investPlan = httpsCallable(functions, "investPlan");
-const claimEarnings = httpsCallable(functions, "claimEarnings");
-
 /* PLANS */
 const plans = [
   {amount:150000, percent:15},
@@ -117,8 +109,11 @@ const plans = [
 ];
 
 const DAYS=12;
+const DAY_MS = 86400000;
 
 let investments={};
+let currentUser=null;
+
 const toast=document.getElementById("toast");
 
 /* TOAST */
@@ -129,26 +124,99 @@ function showToast(type,msg){
   setTimeout(()=>toast.classList.remove("show"),2500);
 }
 
-/* ERROR HANDLER */
-function getErrorMessage(e){
-  if (!navigator.onLine) return "No internet connection";
-
-  if (e.code === "functions/internal") {
-    return "Server error. Check Firebase Functions (deploy or billing)";
-  }
-
-  return (
-    e?.details ||
-    e?.message ||
-    "Request failed"
-  );
-}
-
 /* TIMER */
 function format(ms){
   if(ms<=0) return "Ready to claim";
   let s=Math.floor(ms/1000);
   return `${Math.floor(s/3600)}h ${Math.floor((s%3600)/60)}m ${s%60}s`;
+}
+
+/* INVEST (NO FUNCTIONS) */
+async function invest(amount){
+  if(!currentUser) return showToast("warning","Login first");
+
+  const uid=currentUser.uid;
+  const percent = plans.find(p=>p.amount===amount).percent;
+
+  const userRef = ref(db,"users/"+uid);
+  const investRef = ref(db,`investments/${uid}/12days/${amount}`);
+
+  const userSnap = await get(userRef);
+  const user = userSnap.val();
+
+  if(!user || (user.balance||0) < amount){
+    return showToast("warning","Insufficient balance");
+  }
+
+  const exist = await get(investRef);
+  if(exist.exists()){
+    return showToast("info","Already invested");
+  }
+
+  const daily = amount*percent;
+  const total = daily*DAYS;
+
+  await update(userRef,{
+    balance:(user.balance||0)-amount,
+    lockedBalance:(user.lockedBalance||0)+total
+  });
+
+  await set(investRef,{
+    amount,
+    daily,
+    total,
+    remaining:total,
+    startTime:Date.now(),
+    lastClaim:0,
+    daysClaimed:0,
+    completed:false
+  });
+
+  showToast("success","Investment started");
+}
+
+/* CLAIM (NO FUNCTIONS) */
+async function claim(amount){
+  if(!currentUser) return;
+
+  const uid=currentUser.uid;
+
+  const investRef = ref(db,`investments/${uid}/12days/${amount}`);
+  const userRef = ref(db,"users/"+uid);
+
+  const snap = await get(investRef);
+  const inv = snap.val();
+
+  if(!inv) return showToast("warning","No investment");
+
+  const last = inv.lastClaim||inv.startTime;
+
+  if(Date.now() < last + DAY_MS){
+    return showToast("info","Not yet time");
+  }
+
+  if(inv.completed){
+    return showToast("info","Plan completed");
+  }
+
+  const payout = Math.floor(inv.daily);
+
+  await update(investRef,{
+    lastClaim:Date.now(),
+    daysClaimed:inv.daysClaimed+1,
+    remaining:inv.remaining-payout,
+    completed:(inv.daysClaimed+1)>=DAYS
+  });
+
+  const userSnap = await get(userRef);
+  const user = userSnap.val();
+
+  await update(userRef,{
+    balance:(user.balance||0)+payout,
+    lockedBalance:(user.lockedBalance||0)-payout
+  });
+
+  showToast("success","Earnings received");
 }
 
 /* UI */
@@ -163,7 +231,7 @@ function render(){
 
     if(inv){
       let last=inv.lastClaim||inv.startTime;
-      let time=(last+86400000)-Date.now();
+      let time=(last+DAY_MS)-Date.now();
 
       div.innerHTML=`
         <h3>${p.amount.toLocaleString()} UGX</h3>
@@ -203,32 +271,10 @@ function render(){
   });
 }
 
-/* INVEST */
-async function invest(amount){
-  try{
-    const res = await investPlan({amount});
-    console.log(res.data);
-    showToast("success","Investment started");
-  }catch(e){
-    console.error("INVEST ERROR:", e);
-    showToast("warning", getErrorMessage(e));
-  }
-}
-
-/* CLAIM */
-async function claim(amount){
-  try{
-    const res = await claimEarnings({amount});
-    console.log(res.data);
-    showToast("success","Earnings received");
-  }catch(e){
-    console.error("CLAIM ERROR:", e);
-    showToast("info", getErrorMessage(e));
-  }
-}
-
 /* REALTIME */
 onAuthStateChanged(auth,u=>{
+  currentUser=u;
+
   if(u){
     onValue(ref(db,"investments/"+u.uid+"/12days"),snap=>{
       let raw=snap.val()||{};
