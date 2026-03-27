@@ -20,7 +20,6 @@ body{
   color:#fff;
 }
 
-/* TOPBAR */
 .topbar{
   padding:15px;
   text-align:center;
@@ -29,12 +28,10 @@ body{
   backdrop-filter:blur(10px);
 }
 
-/* CONTAINER */
 .container{
   padding:20px;
 }
 
-/* CARD */
 .card{
   background:linear-gradient(135deg,#0f172a,#1e293b);
   padding:16px;
@@ -84,7 +81,6 @@ body{
   color:#94a3b8;
 }
 
-/* TRANSACTION ID */
 .txid{
   font-size:11px;
   color:#64748b;
@@ -94,7 +90,6 @@ body{
   gap:6px;
 }
 
-/* COPY BUTTON */
 .copy-btn{
   font-size:10px;
   padding:2px 6px;
@@ -103,13 +98,13 @@ body{
   cursor:pointer;
 }
 
-/* RIGHT */
 .right{
   text-align:right;
 }
 
 .amount{
   font-weight:600;
+  white-space:nowrap; /* 🔥 prevent breaking */
 }
 
 .status{
@@ -121,7 +116,6 @@ body{
   color:#22c55e;
 }
 
-/* POPUP */
 .popup{
   position:fixed;
   top:50%;
@@ -144,7 +138,6 @@ body{
   border:2px solid #22c55e;
 }
 
-/* EMPTY */
 .empty{
   text-align:center;
   margin-top:60px;
@@ -168,11 +161,16 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase
 import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
 
+/* ✅ FULL CONFIG (MATCH DASHBOARD) */
 const firebaseConfig = {
   apiKey: "AIzaSyCc637WbfRNZ8-0CN4sEqEnGY27-oAdGiw",
   authDomain: "betpawa-6ef7e.firebaseapp.com",
   databaseURL: "https://betpawa-6ef7e-default-rtdb.europe-west1.firebasedatabase.app",
   projectId: "betpawa-6ef7e",
+  storageBucket: "betpawa-6ef7e.firebasestorage.app",
+  messagingSenderId: "908050081607",
+  appId: "1:908050081607:web:db6e861fca63df78584e62",
+  measurementId: "G-C7M7HWTD01"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -185,7 +183,7 @@ const container = document.getElementById("historyContainer");
 const formatDate = t => new Date(t).toLocaleString();
 const formatMoney = a => Number(a).toLocaleString() + " UGX";
 
-/* GENERATE SHORT ID */
+/* SHORT ID */
 function shortId(id){
   return "TX-" + id.slice(-6).toUpperCase();
 }
@@ -204,35 +202,35 @@ function showPopup(msg){
   setTimeout(()=>p.classList.remove("show"),2000);
 }
 
-/* TRACK NOTIFICATIONS */
+/* TRACK SHOWN */
 let shown = new Set();
 
+/* STORE DATA */
+let deposits = [];
+let withdrawals = [];
+
 /* RENDER */
-function render(transactions){
+function render(){
+  let all = [...deposits, ...withdrawals];
+
   container.innerHTML = "";
 
-  if(transactions.length === 0){
+  if(all.length === 0){
     container.innerHTML = '<div class="empty">No transactions yet</div>';
     return;
   }
 
-  transactions.sort((a,b)=>b.createdAt - a.createdAt);
+  all.sort((a,b)=>b.createdAt - a.createdAt);
 
-  transactions.forEach(tx => {
-
+  all.forEach(tx=>{
     let div = document.createElement("div");
     div.className = "card";
 
     let id = shortId(tx.id);
 
-    /* NOTIFICATION (ONLY ONCE) */
     if(!shown.has(tx.id)){
       shown.add(tx.id);
-      showPopup(
-        tx.type === "deposit"
-        ? "Deposit approved"
-        : "Withdrawal successful"
-      );
+      showPopup(tx.type === "deposit" ? "Deposit approved" : "Withdrawal successful");
     }
 
     div.innerHTML = `
@@ -262,41 +260,40 @@ function render(transactions){
   });
 }
 
-/* REALTIME */
-onAuthStateChanged(auth, user => {
+/* AUTH */
+onAuthStateChanged(auth,user=>{
   if(!user){
-    window.location.href = "login.html";
+    location.href="login.html";
     return;
   }
 
-  let all = [];
-
-  onValue(ref(db,"deposits"), snap => {
-    all = all.filter(t=>t.source!=="deposit");
+  /* ✅ ONLY SUCCESSFUL DEPOSITS */
+  onValue(ref(db,"deposits"),snap=>{
+    deposits = [];
 
     snap.forEach(c=>{
-      let d=c.val();
+      let d = c.val();
       if(d.userId===user.uid && d.status==="success"){
-        all.push({...d,type:"deposit",source:"deposit",id:c.key});
+        deposits.push({...d,type:"deposit",id:c.key});
       }
     });
 
-    render(all);
+    render();
   });
 
-  onValue(ref(db,"withdrawals"), snap => {
-    all = all.filter(t=>t.source!=="withdraw");
+  /* ✅ ONLY SUCCESSFUL WITHDRAWALS */
+  onValue(ref(db,"withdrawals"),snap=>{
+    withdrawals = [];
 
     snap.forEach(c=>{
-      let d=c.val();
+      let d = c.val();
       if(d.userId===user.uid && d.status==="success"){
-        all.push({...d,type:"withdraw",source:"withdraw",id:c.key});
+        withdrawals.push({...d,type:"withdraw",id:c.key});
       }
     });
 
-    render(all);
+    render();
   });
-
 });
 </script>
 
