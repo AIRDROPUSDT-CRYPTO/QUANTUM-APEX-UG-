@@ -36,7 +36,6 @@ h2{
 .plan p{
   font-size:13px;
   margin:2px 0;
-  font-weight:300;
 }
 
 .amount-days{color:#facc15;}
@@ -63,7 +62,6 @@ button{
   top:20px;
   right:-400px;
   transition:0.4s;
-  font-size:14px;
 }
 
 .toast.show{right:20px;}
@@ -88,7 +86,7 @@ import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-functions.js";
 
-/* ✅ CONFIG */
+/* CONFIG */
 const firebaseConfig = {
   apiKey: "AIzaSyCc637WbfRNZ8-0CN4sEqEnGY27-oAdGiw",
   authDomain: "betpawa-6ef7e.firebaseapp.com",
@@ -96,22 +94,21 @@ const firebaseConfig = {
   projectId: "betpawa-6ef7e",
   storageBucket: "betpawa-6ef7e.firebasestorage.app",
   messagingSenderId: "908050081607",
-  appId: "1:908050081607:web:db6e861fca63df78584e62",
-  measurementId: "G-C7M7HWTD01"
+  appId: "1:908050081607:web:db6e861fca63df78584e62"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const auth = getAuth(app);
 
-/* ⚠️ IMPORTANT: REGION FIX */
-const functions = getFunctions(app, "europe-west1");
+/* ✅ FIXED (NO REGION HARD-CODING) */
+const functions = getFunctions(app);
 
-/* 🔒 BACKEND CALLS */
+/* ✅ CALLABLE */
 const investPlan = httpsCallable(functions, "investPlan");
 const claimEarnings = httpsCallable(functions, "claimEarnings");
 
-/* 💰 PLANS */
+/* PLANS */
 const plans = [
   {amount:150000, percent:15},
   {amount:500000, percent:25},
@@ -124,7 +121,7 @@ const DAYS=12;
 let investments={};
 const toast=document.getElementById("toast");
 
-/* 🔔 TOAST */
+/* TOAST */
 function showToast(type,msg){
   toast.className="toast "+type;
   toast.innerText=msg;
@@ -132,14 +129,29 @@ function showToast(type,msg){
   setTimeout(()=>toast.classList.remove("show"),2500);
 }
 
-/* ⏱ TIMER */
+/* ERROR HANDLER */
+function getErrorMessage(e){
+  if (!navigator.onLine) return "No internet connection";
+
+  if (e.code === "functions/internal") {
+    return "Server error. Check Firebase Functions (deploy or billing)";
+  }
+
+  return (
+    e?.details ||
+    e?.message ||
+    "Request failed"
+  );
+}
+
+/* TIMER */
 function format(ms){
   if(ms<=0) return "Ready to claim";
   let s=Math.floor(ms/1000);
   return `${Math.floor(s/3600)}h ${Math.floor((s%3600)/60)}m ${s%60}s`;
 }
 
-/* 🎨 UI */
+/* UI */
 function render(){
   const box=document.getElementById("plans");
   box.innerHTML="";
@@ -191,41 +203,31 @@ function render(){
   });
 }
 
-/* 🔒 FIXED INVEST */
+/* INVEST */
 async function invest(amount){
   try{
-    await investPlan({amount});
-    showToast("success","Investment started successfully");
+    const res = await investPlan({amount});
+    console.log(res.data);
+    showToast("success","Investment started");
   }catch(e){
-    console.error(e);
-
-    const msg =
-      e?.details ||
-      e?.message ||
-      "Investment failed, try again";
-
-    showToast("warning", msg);
+    console.error("INVEST ERROR:", e);
+    showToast("warning", getErrorMessage(e));
   }
 }
 
-/* 🔒 FIXED CLAIM */
+/* CLAIM */
 async function claim(amount){
   try{
-    await claimEarnings({amount});
+    const res = await claimEarnings({amount});
+    console.log(res.data);
     showToast("success","Earnings received");
   }catch(e){
-    console.error(e);
-
-    const msg =
-      e?.details ||
-      e?.message ||
-      "Try again later";
-
-    showToast("info", msg);
+    console.error("CLAIM ERROR:", e);
+    showToast("info", getErrorMessage(e));
   }
 }
 
-/* 🔄 REALTIME */
+/* REALTIME */
 onAuthStateChanged(auth,u=>{
   if(u){
     onValue(ref(db,"investments/"+u.uid+"/12days"),snap=>{
