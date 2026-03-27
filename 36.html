@@ -85,7 +85,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase
 import { getDatabase, ref, onValue, get, update, set } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
 
-/* ✅ FULL CONFIG */
 const firebaseConfig = {
   apiKey: "AIzaSyCc637WbfRNZ8-0CN4sEqEnGY27-oAdGiw",
   authDomain: "betpawa-6ef7e.firebaseapp.com",
@@ -101,7 +100,6 @@ const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const auth = getAuth(app);
 
-/* ✅ UPDATED PLANS */
 const plans = [
   {amount:5000, percent:3},
   {amount:20000, percent:3},
@@ -120,7 +118,11 @@ let currentUser = null;
 
 const toast=document.getElementById("toast");
 
-/* TOAST */
+/* FORMAT */
+function formatUGX(num){
+  return Math.floor(num).toLocaleString() + " UGX";
+}
+
 function showToast(type,msg){
   toast.className="toast "+type;
   toast.innerText=msg;
@@ -128,7 +130,6 @@ function showToast(type,msg){
   setTimeout(()=>toast.classList.remove("show"),2500);
 }
 
-/* TIMER */
 function format(ms){
   if(ms<=0) return "Ready to claim";
   let s=Math.floor(ms/1000);
@@ -140,7 +141,8 @@ async function invest(amount){
   if(!currentUser) return showToast("warning","Login first");
 
   const uid=currentUser.uid;
-  const percent = plans.find(p=>p.amount===amount).percent/100;
+  const plan = plans.find(p=>p.amount===amount);
+  const percent = plan.percent / 100;
 
   const userRef = ref(db,"users/"+uid);
   const investRef = ref(db,`investments/${uid}/36days/${amount}`);
@@ -151,13 +153,12 @@ async function invest(amount){
     return showToast("warning","Insufficient balance");
   }
 
-  const exist = await get(investRef);
-  if(exist.exists()){
+  if((await get(investRef)).exists()){
     return showToast("info","Already invested");
   }
 
-  const daily = amount*percent;
-  const total = daily*DAYS;
+  const daily = amount * percent;
+  const total = amount + (daily * DAYS);
 
   await update(userRef,{
     balance:(user.balance||0)-amount,
@@ -188,8 +189,7 @@ async function claim(amount){
   const userRef = ref(db,"users/"+uid);
 
   const inv = (await get(investRef)).val();
-
-  if(!inv) return showToast("warning","No investment");
+  if(!inv) return;
 
   const last = inv.lastClaim||inv.startTime;
 
@@ -198,10 +198,14 @@ async function claim(amount){
   }
 
   if(inv.completed){
-    return showToast("info","Plan completed");
+    return showToast("info","Completed");
   }
 
-  const payout = Math.floor(inv.daily);
+  let payout = inv.daily;
+
+  if(inv.daysClaimed + 1 === DAYS){
+    payout += inv.amount;
+  }
 
   await update(investRef,{
     lastClaim:Date.now(),
@@ -217,7 +221,7 @@ async function claim(amount){
     lockedBalance:(user.lockedBalance||0)-payout
   });
 
-  showToast("success","Earnings received");
+  showToast("success","Received " + formatUGX(payout));
 }
 
 /* UI */
@@ -230,15 +234,21 @@ function render(){
     let div=document.createElement("div");
     div.className="plan";
 
+    const daily = p.amount * (p.percent/100);
+    const total = p.amount + (daily * DAYS);
+
     if(inv){
       let last=inv.lastClaim||inv.startTime;
       let time=(last+DAY_MS)-Date.now();
 
+      /* 🔥 FIXED HERE */
+      const realTotal = inv.amount + (inv.daily * DAYS);
+
       div.innerHTML=`
-        <h3>${p.amount.toLocaleString()} UGX</h3>
+        <h3>${formatUGX(p.amount)}</h3>
         <p>Days Remaining: <span class="amount-days">${DAYS-inv.daysClaimed}</span></p>
-        <p>Daily Profit: <span class="amount-percent">${Math.floor(inv.daily)} UGX</span></p>
-        <p>Total Payout: <span class="amount-payout">${Math.floor(inv.total)} UGX</span></p>
+        <p>Daily Earnings: <span class="amount-percent">${formatUGX(inv.daily)}</span></p>
+        <p>Total Payout: <span class="amount-payout">${formatUGX(realTotal)}</span></p>
         <p>${format(time)}</p>
       `;
 
@@ -252,13 +262,11 @@ function render(){
       div.appendChild(btn);
 
     }else{
-      let total=p.amount*(p.percent/100)*DAYS;
-
       div.innerHTML=`
-        <h3>${p.amount.toLocaleString()} UGX</h3>
+        <h3>${formatUGX(p.amount)}</h3>
         <p>Duration: <span class="amount-days">${DAYS} Days</span></p>
-        <p>Daily Profit: <span class="amount-percent">${p.percent}%</span></p>
-        <p>Total Payout: <span class="amount-payout">${Math.floor(total)} UGX</span></p>
+        <p>Daily Earnings: <span class="amount-percent">${formatUGX(daily)}</span></p>
+        <p>Total Payout: <span class="amount-payout">${formatUGX(total)}</span></p>
       `;
 
       let btn=document.createElement("button");
@@ -272,7 +280,6 @@ function render(){
   });
 }
 
-/* REALTIME */
 onAuthStateChanged(auth,u=>{
   currentUser=u;
 
