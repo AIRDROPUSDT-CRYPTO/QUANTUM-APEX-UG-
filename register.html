@@ -113,7 +113,7 @@ input{
 
   <button class="register-btn" onclick="register()">Create Account</button>
 
-  <!-- 🔥 ADDED LOGIN BUTTON -->
+  <!-- 🔥 LOGIN BUTTON -->
   <button class="login-btn" onclick="location.href='login.html'">
     Already have an account? Login
   </button>
@@ -129,7 +129,7 @@ input{
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
+import { getAuth, createUserWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
 import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 
 const firebaseConfig = {
@@ -146,6 +146,13 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getDatabase(app);
+
+/* 🔥 AUTO REDIRECT IF LOGGED IN */
+onAuthStateChanged(auth,(user)=>{
+  if(user){
+    location.href="dashboard.html";
+  }
+});
 
 function showPopup(msg,type){
   const popup=document.getElementById("popup");
