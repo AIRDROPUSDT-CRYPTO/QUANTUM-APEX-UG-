@@ -76,6 +76,21 @@ body{
   color:#94a3b8;    
 }    
     
+/* 🔥 NEW BALANCE CARD STYLE */
+.balance-box{
+  text-align:center;
+}
+
+.balance-box h2{
+  font-size:26px;
+  color:#38bdf8;
+}
+
+.balance-box p{
+  font-size:13px;
+  color:#94a3b8;
+}
+
 .info{    
   font-size:13px;    
   line-height:1.6;    
@@ -118,6 +133,12 @@ body{
     <p>Total Referrals</p>    
   </div>    
     
+  <!-- 🔥 NEW REFERRAL EARNINGS -->
+  <div class="card balance-box">
+    <h2 id="refEarnings">0 UGX</h2>
+    <p>Total Referral Earnings</p>
+  </div>
+    
   <div class="card">    
     <div class="title">How Referral Rewards Work</div>    
     <div class="info">    
@@ -140,7 +161,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase
 import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";    
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";    
     
-/* ✅ CONFIG */    
 const firebaseConfig = {    
   apiKey: "AIzaSyCc637WbfRNZ8-0CN4sEqEnGY27-oAdGiw",    
   authDomain: "betpawa-6ef7e.firebaseapp.com",    
@@ -158,7 +178,6 @@ const auth = getAuth(app);
     
 let myCode = "";    
     
-/* GENERATE CODE */    
 function generateCode(){    
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";    
   let code = "";    
@@ -196,18 +215,20 @@ onAuthStateChanged(auth, user => {
     const data = snap.val();    
     if(!data) return;    
     
-    /* CREATE CODE IF NOT EXISTS */    
+    /* KEEP EXISTING CODE LOGIC */
     if(!data.refCode){    
       myCode = generateCode();    
-    
       update(userRef,{ refCode: myCode });    
     } else {    
       myCode = data.refCode;    
     }    
     
     document.getElementById("refCode").innerText = myCode;    
+
+    /* 🔥 SHOW REFERRAL EARNINGS (FROM EXISTING BALANCE) */
+    document.getElementById("refEarnings").innerText =
+      (data.balance || 0).toLocaleString() + " UGX";
     
-    /* COUNT + BONUS */    
     onValue(ref(db,"users"), usersSnap => {    
     
       let count = 0;    
@@ -249,4 +270,4 @@ onAuthStateChanged(auth, user => {
 </script>    
     
 </body>    
-</html> 
+</html>
