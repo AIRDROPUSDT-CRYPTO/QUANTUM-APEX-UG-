@@ -254,7 +254,7 @@ html,body{
 
 <script>
 const firebaseConfig = {
-  apiKey: "AIzaSy...",
+  apiKey: "AIzaSyCc637WbfRNZ8-0CN4sEqEnGY27-oAdGiw",
   authDomain: "betpawa-6ef7e.firebaseapp.com",
   databaseURL: "https://betpawa-6ef7e-default-rtdb.europe-west1.firebasedatabase.app",
   projectId: "betpawa-6ef7e",
@@ -279,7 +279,7 @@ let currentUser="";
 let currentEmail="";
 let replyTo=null;
 
-/* AUTO LOAD USER */
+/* 🔥 AUTO LOAD USER FROM FIREBASE */
 function autoLoadUser(uid){
   db.ref("users/"+uid).once("value").then(snap=>{
     let data = snap.val();
@@ -293,40 +293,64 @@ function autoLoadUser(uid){
 
       showChat();
     } else {
-      initApp();
+      initApp(uid);
     }
   });
 }
 
-function initApp(){
+/* 🔥 CHECK LOCAL STORAGE (REMEMBER USER FOREVER) */
+function initApp(uid){
   currentUser = localStorage.getItem("chatUser") || "";
   currentEmail = localStorage.getItem("chatEmail") || "";
 
   if(currentUser && currentEmail){
     showChat();
+  } else {
+    login.style.display="flex";
+
+    /* 🔥 PREFILL INPUTS IF EXIST */
+    username.value = currentUser;
+    email.value = currentEmail;
   }
 }
 
+/* 🔥 TOAST */
 function showToast(msg){
   toast.innerText=msg;
   toast.style.display="block";
   setTimeout(()=>toast.style.display="none",2000);
 }
 
+/* 🔥 ENTER CHAT + SAVE TO FIREBASE */
 function enterChat(){
   let name=username.value.trim();
   let emailVal=email.value.trim();
-  if(!name || !emailVal) return;
 
+  if(!name || !emailVal){
+    showToast("Fill all fields");
+    return;
+  }
+
+  let user = firebase.auth().currentUser;
+  if(!user) return;
+
+  /* SAVE TO LOCAL */
   localStorage.setItem("chatUser",name);
   localStorage.setItem("chatEmail",emailVal);
 
   currentUser=name;
   currentEmail=emailVal;
 
+  /* 🔥 SAVE TO FIREBASE (ONLY ONCE / UPDATE SAFE) */
+  db.ref("users/"+user.uid).update({
+    username:name,
+    email:emailVal
+  });
+
   showChat();
 }
 
+/* 🔥 SHOW CHAT */
 function showChat(){
   login.style.display="none";
   chatApp.style.display="flex";
@@ -445,9 +469,7 @@ function loadMessages(){
       });
 
       let replyHTML = m.reply ? `<div class="reply-box">${m.reply}</div>` : "";
-
       let content=m.text || `<img src="${m.image}" class="chat-img">`;
-
       let ticks = m.userEmail===currentEmail ? `<span class="tick">✓✓</span>` : "";
 
       div.innerHTML=`
