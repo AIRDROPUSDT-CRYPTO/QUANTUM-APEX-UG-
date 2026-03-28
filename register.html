@@ -52,6 +52,18 @@ input{
   color:#fff;cursor:pointer;
 }
 
+/* 🔥 LOGIN BUTTON */
+.login-btn{
+  width:100%;
+  padding:12px;
+  margin-top:10px;
+  border:none;
+  border-radius:30px;
+  background:linear-gradient(45deg,#22c55e,#16a34a);
+  color:#fff;
+  cursor:pointer;
+}
+
 .loader-overlay{
   position:fixed;top:0;left:0;width:100%;height:100%;
   background:rgba(0,0,0,0.6);
@@ -100,6 +112,11 @@ input{
   <input type="text" id="refCode" placeholder="Referral Code">
 
   <button class="register-btn" onclick="register()">Create Account</button>
+
+  <!-- 🔥 ADDED LOGIN BUTTON -->
+  <button class="login-btn" onclick="location.href='login.html'">
+    Already have an account? Login
+  </button>
 </div>
 
 <div class="loader-overlay" id="loader">
