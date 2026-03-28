@@ -123,20 +123,62 @@ body{
   z-index:999;
 }
 
-/* 🔥 EXIT MODAL */
+/* 🔥 EXIT MODAL OVERLAY */
 .exit-modal{
   position:fixed;
-  top:50%;
-  left:50%;
-  transform:translate(-50%,-50%);
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  display:none;
+
+  /* CENTERING MAGIC */
+  display:flex;
+  align-items:center;
+  justify-content:center;
+
+  background:rgba(0,0,0,0.7); /* dark overlay */
+  z-index:99999;
+}
+
+/* 🔥 OVERLAY */
+.exit-modal{
+  position:fixed;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  background:rgba(0,0,0,0.8);
+
+  display:flex;
+  align-items:center;
+  justify-content:center;
+
+  visibility:hidden;
+  opacity:0;
+  transition:opacity 0.3s ease;
+
+  z-index:99999;
+}
+
+/* 🔥 SHOW STATE */
+.exit-modal.show{
+  visibility:visible;
+  opacity:1;
+}
+
+/* 🔥 MODAL BOX */
+.modal-box{
   background:#020617;
   padding:20px;
   border-radius:12px;
   text-align:center;
-  display:none;
-  z-index:2000;
+  color:#fff;
+  width:80%;
+  max-width:300px;
 }
 
+/* BUTTONS */
 .exit-modal button{
   margin:5px;
   padding:10px 15px;
@@ -147,7 +189,6 @@ body{
 
 .exit-btn{background:#ef4444;color:#fff;}
 .cancel-btn{background:#1e293b;color:#fff;}
-
 .plans{padding:20px;}        
 
 .plan{background:linear-gradient(135deg,#1e293b,#020617);padding:18px;border-radius:14px;margin-bottom:15px;border:1px solid rgba(56,189,248,0.1);}        
@@ -235,26 +276,8 @@ body{
   <div class="plan"><h3>24 hrs Plan</h3><p>Duration: 24 hrs</p><p>Daily Profit: 40%</p><p>Minimum: 300,000 UGX</p><button onclick="goPlan('24hrs.html')">Invest Now</button></div>        
 </div>        
 
-<!-- 🔥 EXIT MODAL -->
-<div id="exitModal" class="exit-modal" style="
-  position:fixed;
-  top:0; left:0;
-  width:100%; height:100%;
-  background:rgba(0,0,0,0.8);
-  display:none;
-  z-index:99999;
-  align-items:center;
-  justify-content:center;
-">
-  <div style="
-    background:#020617;
-    padding:20px;
-    border-radius:12px;
-    text-align:center;
-    color:#fff;
-    width:80%;
-    max-width:300px;
-  ">
+<div id="exitModal" class="exit-modal">
+  <div class="modal-box">
     <p>Do you want to exit?</p>
     <button class="cancel-btn" onclick="closeExit()">Cancel</button>
     <button class="exit-btn" onclick="exitApp()">Exit</button>
@@ -298,42 +321,46 @@ body{
 "></div>
 
 <script>
-/* 🔥 HARD BACK BUTTON TRAP (INSTANT) */
+/* 🔥 HARD BACK BUTTON TRAP (INSTANT + CLEAN) */
 (function(){
-  // Fill history stack once page loads
+  // Fill history stack
   for(let i = 0; i < 5; i++){
     history.pushState({page:i}, "", location.href);
   }
 
-  window.addEventListener("popstate", function(e){
-    const modal = document.getElementById("exitModal");
+  window.addEventListener("popstate", function(){
+    showExit(); // ✅ use class instead of display
 
-    if(modal){
-      modal.style.display = "flex"; // better centering
-    }
-
-    // 🔥 Immediately trap again (NO DELAY)
+    // 🔥 instantly trap again
     history.pushState(null, "", location.href);
   });
 })();
 
-/* CLOSE MODAL */
-function closeExit(){
+/* 🔥 SHOW MODAL */
+function showExit(){
   const modal = document.getElementById("exitModal");
   if(modal){
-    modal.style.display = "none";
+    modal.classList.add("show");
   }
 }
 
-/* 🔥 EXIT FUNCTION (BEST POSSIBLE WEB VERSION) */
+/* 🔥 CLOSE MODAL */
+function closeExit(){
+  const modal = document.getElementById("exitModal");
+  if(modal){
+    modal.classList.remove("show");
+  }
+}
+
+/* 🔥 EXIT FUNCTION */
 function exitApp(){
-  // Try closing tab (may fail on some browsers)
+  // Try closing tab (limited support)
   try {
     window.open('', '_self');
     window.close();
   } catch(e){}
 
-  // Fallback (guaranteed visual exit)
+  // Fallback UI
   document.body.innerHTML = `
     <div style="
       display:flex;
