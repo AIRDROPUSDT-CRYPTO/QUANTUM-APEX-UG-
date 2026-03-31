@@ -3,100 +3,229 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Register | Quantum Apex Ug</title>
 
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+<title>Register | Nexora Capital</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 
 <style>
-*{margin:0;padding:0;box-sizing:border-box;font-family:'Poppins',sans-serif;}
+*{
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
+  font-family:'Inter',sans-serif;
+}
 
 body{
-  background: radial-gradient(circle at top,#020617,#0f172a 60%,#000);
-  display:flex;justify-content:center;align-items:center;
-  min-height:100vh;color:#fff;
+  background:linear-gradient(135deg,#f5f7fb,#eef2ff);
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  min-height:100vh;
+  color:#0f172a;
 }
 
+/* HEADER */
 .header{
-  position:absolute;top:20px;width:100%;
-  text-align:center;color:#38bdf8;font-weight:600;letter-spacing:2px;
+  position:absolute;
+  top:30px;
+  width:100%;
+  text-align:center;
 }
 
+.header h1{
+  font-size:20px;
+  font-weight:600;
+  color:#0A2540;
+}
+
+.header p{
+  font-size:13px;
+  color:#64748b;
+  margin-top:4px;
+}
+
+/* CARD */
 .container{
-  background: linear-gradient(145deg,#020617,#0f172a);
-  padding:30px;border-radius:18px;width:360px;text-align:center;
-  box-shadow:0 0 30px rgba(56,189,248,0.15);
-  border:1px solid rgba(56,189,248,0.2);
+  width:400px;
+  padding:35px;
+  border-radius:18px;
+  background:#ffffff;
+  border:1px solid #e2e8f0;
+  box-shadow:0 15px 40px rgba(37,99,235,0.08);
+  position:relative;
 }
 
-h2{margin-bottom:20px;color:#38bdf8;}
+/* subtle glow gradient */
+.container::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  border-radius:18px;
+  padding:1px;
+  background:linear-gradient(135deg,#2563eb,#7c3aed,#22c55e);
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+}
 
+/* TEXT */
+h2{
+  font-size:20px;
+  margin-bottom:5px;
+  color:#0A2540;
+}
+
+.subtext{
+  font-size:13px;
+  color:#64748b;
+  margin-bottom:20px;
+}
+
+/* INPUTS */
 input{
-  width:100%;padding:12px;margin:6px 0;
-  border-radius:10px;border:none;outline:none;
-  background:#020617;color:#fff;
-  border:1px solid rgba(148,163,184,0.2);
+  width:100%;
+  padding:12px;
+  margin:10px 0;
+  border-radius:8px;
+  border:1px solid #cbd5e1;
+  outline:none;
+  font-size:14px;
+  transition:0.2s;
 }
 
+input:focus{
+  border-color:#2563eb;
+  box-shadow:0 0 0 2px rgba(37,99,235,0.1);
+}
+
+/* PHONE */
 .phone-box{
-  display:flex;align-items:center;background:#020617;
-  border-radius:10px;overflow:hidden;
-  border:1px solid rgba(148,163,184,0.2);
+  display:flex;
+  align-items:center;
+  border:1px solid #cbd5e1;
+  border-radius:8px;
+  margin:10px 0;
+  overflow:hidden;
+  background:#fff;
 }
 
-.phone-box span{padding:0 10px;color:#38bdf8;font-weight:600;}
-.phone-box input{border:none;flex:1;background:transparent;color:#fff;}
+.phone-box span{
+  padding:0 12px;
+  font-weight:500;
+  color:#2563eb;
+  white-space:nowrap;
+}
 
+.phone-box input{
+  border:none;
+  margin:0;
+  flex:1;
+}
+
+/* BUTTONS */
 .register-btn{
-  width:100%;padding:13px;margin-top:10px;border:none;
-  border-radius:30px;background:linear-gradient(45deg,#38bdf8,#6366f1);
-  color:#fff;cursor:pointer;
+  width:100%;
+  padding:13px;
+  margin-top:15px;
+  border:none;
+  border-radius:8px;
+  background:linear-gradient(135deg,#2563eb,#4f46e5);
+  color:#fff;
+  font-weight:500;
+  cursor:pointer;
+  transition:0.2s;
 }
 
-/* 🔥 LOGIN BUTTON */
+.register-btn:hover{
+  opacity:0.95;
+}
+
 .login-btn{
   width:100%;
   padding:12px;
   margin-top:10px;
   border:none;
-  border-radius:30px;
-  background:linear-gradient(45deg,#22c55e,#16a34a);
-  color:#fff;
+  border-radius:8px;
+  background:#e2e8f0;
+  color:#0f172a;
   cursor:pointer;
 }
 
+/* FOOTER */
+.footer{
+  text-align:center;
+  margin-top:20px;
+  font-size:11px;
+  color:#94a3b8;
+}
+
+/* LOADER */
 .loader-overlay{
-  position:fixed;top:0;left:0;width:100%;height:100%;
-  background:rgba(0,0,0,0.6);
-  display:none;justify-content:center;align-items:center;
+  position:fixed;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  background:rgba(255,255,255,0.6);
+  display:none;
+  justify-content:center;
+  align-items:center;
   z-index:2000;
 }
+
 .loader{
-  width:50px;height:50px;
-  border:5px solid #38bdf8;
-  border-top:5px solid transparent;
+  width:40px;
+  height:40px;
+  border:4px solid #2563eb;
+  border-top:4px solid transparent;
   border-radius:50%;
   animation:spin 1s linear infinite;
 }
-@keyframes spin{to{transform:rotate(360deg);}}
 
-.popup{
-  position:fixed;top:50%;left:50%;
-  transform:translate(-50%,-50%) scale(0.85);
-  background:#020617;padding:20px 30px;border-radius:12px;
-  text-align:center;opacity:0;transition:0.25s;z-index:3000;
+@keyframes spin{
+  to{transform:rotate(360deg);}
 }
-.popup.show{opacity:1;transform:translate(-50%,-50%) scale(1);}
-.popup.success{border:2px solid #22c55e;}
-.popup.error{border:2px solid #ef4444;}
+
+/* POPUP */
+.popup{
+  position:fixed;
+  top:50%;
+  left:50%;
+  transform:translate(-50%,-50%) scale(0.9);
+  background:#fff;
+  padding:18px 25px;
+  border-radius:10px;
+  text-align:center;
+  opacity:0;
+  transition:0.25s;
+  z-index:3000;
+  box-shadow:0 10px 25px rgba(0,0,0,0.1);
+}
+
+.popup.show{
+  opacity:1;
+  transform:translate(-50%,-50%) scale(1);
+}
+
+.popup.success{border-left:4px solid #22c55e;}
+.popup.error{border-left:4px solid #ef4444;}
 </style>
 </head>
 
 <body>
 
-<div class="header">QUANTUM APEX UG</div>
+<div class="header">
+  <h1>Nexora Capital</h1>
+  <p>Create your secure investment account</p>
+</div>
 
 <div class="container">
+
   <h2>Create Account</h2>
+  <p class="subtext">Start your investment journey</p>
 
   <input type="text" id="name" placeholder="Full Name">
   <input type="text" id="username" placeholder="Username">
@@ -113,10 +242,13 @@ input{
 
   <button class="register-btn" onclick="register()">Create Account</button>
 
-  <!-- 🔥 LOGIN BUTTON -->
   <button class="login-btn" onclick="location.href='login.html'">
     Already have an account? Login
   </button>
+
+  <div class="footer">
+    © 2026 Nexora Capital • Investing involves risk
+  </div>
 </div>
 
 <div class="loader-overlay" id="loader">
@@ -128,6 +260,7 @@ input{
 </div>
 
 <script type="module">
+/* 🔥 YOUR ORIGINAL LOGIC — UNCHANGED */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
 import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
@@ -147,7 +280,6 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getDatabase(app);
 
-/* 🔥 AUTO REDIRECT IF LOGGED IN */
 onAuthStateChanged(auth,(user)=>{
   if(user){
     location.href="dashboard.html";
