@@ -56,32 +56,13 @@ body{
 .save-btn{background:linear-gradient(45deg,#38bdf8,#6366f1);}        
 .logout-btn{background:#ef4444;}        
 
-.balances{padding:20px;}        
+.balances{
+  padding:20px;
+}
 
-.balance-top{display:flex;gap:12px;}        
-
-.balance-card{        
-  flex:1;        
-  background:linear-gradient(145deg,#020617,#0f172a);        
-  border:1px solid rgba(56,189,248,0.2);        
-  padding:16px;        
-  border-radius:16px;        
-  box-shadow:0 0 20px rgba(56,189,248,0.15);        
-}        
-
-.balance-card h4{font-size:12px;color:#94a3b8;}        
-
-.balance-card{
-  flex:1;
-  background:linear-gradient(145deg,#020617,#0f172a);
-  border:1px solid rgba(56,189,248,0.2);
-  padding:14px; /* slightly reduced */
-  border-radius:16px;
-  box-shadow:0 0 20px rgba(56,189,248,0.15);
-
+.balance-top{
   display:flex;
-  flex-direction:column;
-  justify-content:center;
+  gap:12px;
 }
 
 .balance-card{
@@ -95,7 +76,7 @@ body{
   display:flex;
   flex-direction:column;
   justify-content:center;
-  overflow:hidden; /* ✅ prevents text spilling out */
+  overflow:hidden; /* prevents overflow */
 }
 
 .balance-card h4{
@@ -105,14 +86,15 @@ body{
 
 .balance-card p{
   margin-top:6px;
-  font-size: clamp(13px, 3.2vw, 17px); /* ✅ tighter for fitting */
+  font-size: clamp(13px, 3.2vw, 17px);
   font-weight:600;
   color:#22c55e;
 
-  white-space: nowrap;      /* ✅ FORCE ONE LINE */
-  overflow: hidden;         /* ✅ hide overflow */
-  text-overflow: ellipsis;  /* ✅ adds ... if too long */
+  white-space: nowrap;      /* force one line */
+  overflow: hidden;         /* hide overflow */
+  text-overflow: ellipsis;  /* add ... if too long */
 }
+
 /* 🔥 INVESTMENT IMAGE SECTION */
 .invest-section{
   padding:20px;
