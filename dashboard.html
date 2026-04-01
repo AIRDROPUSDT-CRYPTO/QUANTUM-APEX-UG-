@@ -303,12 +303,6 @@ body{
 "></div>
 
 <script>
-/* 🔥 HARD BACK BUTTON TRAP (INSTANT + CLEAN) */
-(function(){
-  // Fill history stack
-  for(let i = 0; i < 5; i++){
-    history.pushState({page:i}, "", location.href);
-  }
 
   window.addEventListener("popstate", function(){
     showExit(); // ✅ use class instead of display
