@@ -267,7 +267,7 @@ body{
 </div>
 
 <!-- 🔥 CHAT FLOAT -->
-<div class="chat-float" onclick="openChat()" style="position:fixed;bottom:20px;right:20px;">
+<div class="chat-float" onclick="openChat()">
   💬
   <span id="msgCount" style="
     position:absolute;
@@ -352,10 +352,13 @@ function exitApp(){
   `;
 }
 
-/* OPTIONAL: PREVENT ACCIDENTAL REFRESH EXIT */
+let shouldWarn = false;
+
 window.addEventListener("beforeunload", function(e){
-  e.preventDefault();
-  e.returnValue = "";
+  if(shouldWarn){
+    e.preventDefault();
+    e.returnValue = "";
+  }
 });
         
 function openChat(){
@@ -485,16 +488,31 @@ function startFeedSafe(){
 
   const t = document.getElementById("toastFeed");
 
-  if(t){
-    feedStarted = true;
-    runFeed();
-    setInterval(runFeed,10000);
-  }else{
-    setTimeout(startFeedSafe,300);
-  }
+  let feedInterval;
+
+if(t){
+  feedStarted = true;
+  runFeed();
+
+  // store interval so we can control it
+  feedInterval = setInterval(runFeed,10000);
+
+}else{
+  setTimeout(startFeedSafe,300);
 }
 
+// ✅ ONLY ONCE
 window.addEventListener("DOMContentLoaded", startFeedSafe);
+
+// ✅ visibility control (correct placement)
+document.addEventListener("visibilitychange", ()=>{
+  if(document.hidden){
+    clearInterval(feedInterval);
+  }else{
+    clearInterval(feedInterval); // prevent duplicates
+    feedInterval = setInterval(runFeed,10000);
+  }
+});
 </script>
 
 <!-- ✅ SCRIPT 2 (UNCHANGED) -->
@@ -550,11 +568,16 @@ onValue(msgRef,snap=>{
 
 onAuthStateChanged(auth,user=>{
   if(user){
-    onValue(ref(db,"users/"+user.uid),snap=>{
-      let d=snap.val();
-      if(!d) return;
+    
+onValue(ref(db,"users/"+user.uid),snap=>{
+  let d = snap.val();
 
-      document.getElementById("mainBalance").innerText=formatUGX(d.balance||0);
+  if(!d){
+    console.warn("User data missing");
+    return;
+  }
+
+  document.getElementById("mainBalance").innerText = formatUGX(d.balance || 0);
       document.getElementById("lockedBalance").innerText=formatUGX(d.lockedBalance||0);
 
       const nameEl = document.getElementById("editName");
