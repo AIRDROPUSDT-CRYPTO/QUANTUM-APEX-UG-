@@ -63,6 +63,7 @@ body{
 .balance-top{
   display:flex;
   gap:12px;
+  flex-wrap:wrap; /* ✅ allows stacking on small screens */
 }
 
 .balance-card{
@@ -76,7 +77,7 @@ body{
   display:flex;
   flex-direction:column;
   justify-content:center;
-  overflow:hidden; /* prevents overflow */
+  overflow:hidden;
 }
 
 .balance-card h4{
@@ -90,11 +91,17 @@ body{
   font-weight:600;
   color:#22c55e;
 
-  white-space: nowrap;      /* force one line */
-  overflow: hidden;         /* hide overflow */
-  text-overflow: ellipsis;  /* add ... if too long */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
+/* ✅ MOBILE FIX */
+@media(max-width: 400px){
+  .balance-card{
+    flex:100%;
+  }
+}
 /* 🔥 INVESTMENT IMAGE SECTION */
 .invest-section{
   padding:20px;
