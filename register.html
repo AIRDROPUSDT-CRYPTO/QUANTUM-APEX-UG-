@@ -4,212 +4,151 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>Register | Nexora Capital</title>
+<title>Register | Nexora</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 
 <style>
-*{
-  margin:0;
-  padding:0;
-  box-sizing:border-box;
-  font-family:'Inter',sans-serif;
-}
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Inter',sans-serif;}
 
 body{
-  background:linear-gradient(135deg,#f5f7fb,#eef2ff);
+  background:linear-gradient(135deg,#020617,#0f172a); /* DARK FIX */
   display:flex;
   justify-content:center;
   align-items:center;
   min-height:100vh;
-  color:#0f172a;
 }
 
-/* HEADER */
+/* HEADER FIXED */
 .header{
-  position:absolute;
-  top:30px;
+  position:fixed;
+  top:20px;
   width:100%;
   text-align:center;
-}
-
-.header h1{
-  font-size:20px;
-  font-weight:600;
-  color:#0A2540;
-}
-
-.header p{
-  font-size:13px;
-  color:#64748b;
-  margin-top:4px;
+  color:#e2e8f0;
 }
 
 /* CARD */
 .container{
-  width:400px;
-  padding:35px;
-  border-radius:18px;
-  background:#ffffff;
-  border:1px solid #e2e8f0;
-  box-shadow:0 15px 40px rgba(37,99,235,0.08);
+  width:340px;
+  padding:25px;
+  border-radius:16px;
+  background:#0f172a;
   position:relative;
+  box-shadow:0 10px 30px rgba(0,0,0,0.6);
 }
 
-/* subtle glow gradient */
+/* GLOW BORDER */
 .container::before{
   content:"";
   position:absolute;
   inset:0;
-  border-radius:18px;
   padding:1px;
+  border-radius:16px;
   background:linear-gradient(135deg,#2563eb,#7c3aed,#22c55e);
   -webkit-mask:
     linear-gradient(#fff 0 0) content-box,
     linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
-          mask-composite: exclude;
+  mask-composite: exclude;
+
+  pointer-events: none; /* 🔥 THIS FIXES EVERYTHING */
 }
 
 /* TEXT */
-h2{
-  font-size:20px;
-  margin-bottom:5px;
-  color:#0A2540;
-}
+h2{font-size:18px;margin-bottom:10px;color:#f1f5f9;}
 
-.subtext{
-  font-size:13px;
-  color:#64748b;
-  margin-bottom:20px;
-}
-
-/* INPUTS */
-input{
+input, select{
   width:100%;
-  padding:12px;
-  margin:10px 0;
+  padding:11px;
+  margin:8px 0;
   border-radius:8px;
-  border:1px solid #cbd5e1;
-  outline:none;
+  border:1px solid #1e293b;
   font-size:14px;
-  transition:0.2s;
+  outline:none;
+  background:#020617;
+  color:#e2e8f0;
 }
 
-input:focus{
+input:focus, select:focus{
   border-color:#2563eb;
-  box-shadow:0 0 0 2px rgba(37,99,235,0.1);
+  box-shadow:0 0 0 2px rgba(37,99,235,0.2);
 }
 
-/* PHONE */
+/* PHONE BOX */
 .phone-box{
   display:flex;
-  align-items:center;
-  border:1px solid #cbd5e1;
-  border-radius:8px;
-  margin:10px 0;
-  overflow:hidden;
-  background:#fff;
+  gap:5px;
 }
 
-.phone-box span{
-  padding:0 12px;
-  font-weight:500;
-  color:#2563eb;
-  white-space:nowrap;
-}
-
-.phone-box input{
-  border:none;
-  margin:0;
-  flex:1;
-}
+.phone-box select{width:40%;}
+.phone-box input{width:60%;}
 
 /* BUTTONS */
 .register-btn{
   width:100%;
-  padding:13px;
-  margin-top:15px;
+  padding:12px;
+  margin-top:12px;
   border:none;
   border-radius:8px;
   background:linear-gradient(135deg,#2563eb,#4f46e5);
   color:#fff;
-  font-weight:500;
   cursor:pointer;
-  transition:0.2s;
-}
-
-.register-btn:hover{
-  opacity:0.95;
 }
 
 .login-btn{
   width:100%;
-  padding:12px;
-  margin-top:10px;
+  padding:11px;
+  margin-top:8px;
   border:none;
   border-radius:8px;
-  background:#e2e8f0;
-  color:#0f172a;
-  cursor:pointer;
+  background:#1e293b;
+  color:#e2e8f0;
 }
 
 /* FOOTER */
 .footer{
   text-align:center;
-  margin-top:20px;
+  margin-top:12px;
   font-size:11px;
-  color:#94a3b8;
+  color:#64748b;
 }
 
 /* LOADER */
 .loader-overlay{
   position:fixed;
-  top:0;
-  left:0;
-  width:100%;
-  height:100%;
-  background:rgba(255,255,255,0.6);
+  top:0;left:0;
+  width:100%;height:100%;
   display:none;
   justify-content:center;
   align-items:center;
-  z-index:2000;
+  background:rgba(0,0,0,0.6);
 }
 
 .loader{
-  width:40px;
-  height:40px;
+  width:35px;height:35px;
   border:4px solid #2563eb;
   border-top:4px solid transparent;
   border-radius:50%;
   animation:spin 1s linear infinite;
 }
 
-@keyframes spin{
-  to{transform:rotate(360deg);}
-}
+@keyframes spin{to{transform:rotate(360deg);}}
 
 /* POPUP */
 .popup{
   position:fixed;
-  top:50%;
-  left:50%;
+  top:50%;left:50%;
   transform:translate(-50%,-50%) scale(0.9);
-  background:#fff;
-  padding:18px 25px;
+  background:#0f172a;
+  color:#e2e8f0;
+  padding:15px 20px;
   border-radius:10px;
-  text-align:center;
   opacity:0;
-  transition:0.25s;
-  z-index:3000;
-  box-shadow:0 10px 25px rgba(0,0,0,0.1);
+  transition:0.2s;
 }
 
-.popup.show{
-  opacity:1;
-  transform:translate(-50%,-50%) scale(1);
-}
-
+.popup.show{opacity:1;transform:translate(-50%,-50%) scale(1);}
 .popup.success{border-left:4px solid #22c55e;}
 .popup.error{border-left:4px solid #ef4444;}
 </style>
@@ -218,73 +157,59 @@ input:focus{
 <body>
 
 <div class="header">
-  <h1>Nexora Capital</h1>
-  <p>Create your secure investment account</p>
+  <h3>Nexora Capital</h3>
 </div>
 
 <div class="container">
 
-  <h2>Create Account</h2>
-  <p class="subtext">Start your investment journey</p>
+<h2>Create Account</h2>
 
-  <input type="text" id="name" placeholder="Full Name">
-  <input type="text" id="username" placeholder="Username">
+<input type="text" id="name" placeholder="Full Name">
+<input type="text" id="username" placeholder="Username">
 
-  <div class="phone-box">
-    <span>🇺🇬 +256</span>
-    <input type="text" id="phone" placeholder="7XXXXXXXX">
-  </div>
-
-  <input type="email" id="email" placeholder="Email Address">
-  <input type="password" id="password" placeholder="Password">
-  <input type="password" id="confirmPassword" placeholder="Confirm Password">
-  <input type="text" id="refCode" placeholder="Referral Code">
-
-  <button class="register-btn" onclick="register()">Create Account</button>
-
-  <button class="login-btn" onclick="location.href='login.html'">
-    Already have an account? Login
-  </button>
-
-  <div class="footer">
-    © 2026 Nexora Capital • Investing involves risk
-  </div>
+<div class="phone-box">
+  <select id="country">
+    <option value="+254">🇰🇪 +254</option>
+    <option value="+256">🇺🇬 +256</option>
+    <option value="+255">🇹🇿 +255</option>
+    <option value="+234">🇳🇬 +234</option>
+    <option value="+233">🇬🇭 +233</option>
+  </select>
+  <input type="text" id="phone" placeholder="7XXXXXXXX">
 </div>
 
-<div class="loader-overlay" id="loader">
-  <div class="loader"></div>
+<input type="email" id="email" placeholder="Email Address">
+<input type="password" id="password" placeholder="Password">
+<input type="password" id="confirmPassword" placeholder="Confirm Password">
+<input type="text" id="refCode" placeholder="Referral Code">
+
+<button class="register-btn" onclick="register()">Create Account</button>
+<button class="login-btn" onclick="location.href='login.html'">Login</button>
+
+<div class="footer">© Nexora Capital</div>
 </div>
 
-<div id="popup" class="popup">
-  <p id="popupMsg"></p>
-</div>
+<div class="loader-overlay" id="loader"><div class="loader"></div></div>
+<div id="popup" class="popup"><p id="popupMsg"></p></div>
 
 <script type="module">
-/* 🔥 YOUR ORIGINAL LOGIC — UNCHANGED */
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
-import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCc637WbfRNZ8-0CN4sEqEnGY27-oAdGiw",
   authDomain: "betpawa-6ef7e.firebaseapp.com",
   databaseURL: "https://betpawa-6ef7e-default-rtdb.europe-west1.firebasedatabase.app",
   projectId: "betpawa-6ef7e",
-  storageBucket: "betpawa-6ef7e.firebasestorage.app",
+  storageBucket: "betpawa-6ef7e.appspot.com",
   messagingSenderId: "908050081607",
-  appId: "1:908050081607:web:db6e861fca63df78584e62",
-  measurementId: "G-C7M7HWTD01"
+  appId: "1:908050081607:web:db6e861fca63df78584e62"
 };
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getDatabase(app);
-
-onAuthStateChanged(auth,(user)=>{
-  if(user){
-    location.href="dashboard.html";
-  }
-});
 
 function showPopup(msg,type){
   const popup=document.getElementById("popup");
@@ -293,49 +218,67 @@ function showPopup(msg,type){
   setTimeout(()=>popup.classList.remove("show"),2000);
 }
 
-function formatPhone(num){
-  num=num.replace(/\D/g,"");
-  if(num.startsWith("0")) num=num.slice(1);
-  return "+256"+num;
+function formatPhone(){
+  let num = document.getElementById("phone").value.replace(/\D/g,"");
+  let code = document.getElementById("country").value;
+
+  if(num.startsWith("0")) num = num.slice(1);
+
+  document.getElementById("phone").value = num;
+  return code + num;
+}
+
+async function generateUniqueCode(){
+  let code, exists=true;
+  while(exists){
+    code=Math.random().toString(36).substring(2,8).toUpperCase();
+    const snap=await get(ref(db,"public/refCodes/"+code));
+    exists=snap.exists();
+  }
+  return code;
 }
 
 window.register = async function(){
 
-  const nameVal = document.getElementById("name").value.trim();
-  const usernameVal = document.getElementById("username").value.trim();
-  const phoneVal = formatPhone(document.getElementById("phone").value);
-  const emailVal = document.getElementById("email").value.trim();
-  const passwordVal = document.getElementById("password").value;
-  const confirmVal = document.getElementById("confirmPassword").value;
-  const refCodeVal = document.getElementById("refCode").value.trim().toUpperCase();
-  const loader = document.getElementById("loader");
-
-  if(!nameVal) return showPopup("Enter full name","error");
-  if(!usernameVal) return showPopup("Enter username","error");
-  if(phoneVal.length !== 13) return showPopup("Enter valid phone number","error");
-  if(!emailVal || !emailVal.includes("@")) return showPopup("Enter valid email","error");
-  if(passwordVal.length < 6) return showPopup("Password must be at least 6 characters","error");
-  if(passwordVal !== confirmVal) return showPopup("Passwords do not match","error");
-  if(!refCodeVal) return showPopup("Enter referral code","error");
-
+  const loader=document.getElementById("loader");
   loader.style.display="flex";
 
   try{
+    const nameVal=document.getElementById("name").value.trim();
+    const userVal=document.getElementById("username").value.trim();
+    const phoneVal=formatPhone();
+    const emailVal=document.getElementById("email").value.trim();
+    const pass=document.getElementById("password").value;
+    const confirm=document.getElementById("confirmPassword").value;
+    const refVal=document.getElementById("refCode").value.trim().toUpperCase();
 
-    let refSnap = await get(ref(db,"public/refCodes/"+refCodeVal));
-    if(!refSnap.exists()) throw {custom:"Invalid referral code"};
+    if(!nameVal||!userVal||!emailVal||!pass) throw {msg:"Fill all fields"};
+    if(pass!==confirm) throw {msg:"Passwords mismatch"};
 
-    const userCredential = await createUserWithEmailAndPassword(auth,emailVal,passwordVal);
-    const user = userCredential.user;
+    const refSnap=await get(ref(db,"public/refCodes/"+refVal));
+    if(!refSnap.exists()) throw {msg:"Invalid referral"};
 
-    let newCode=Math.random().toString(36).substring(2,8).toUpperCase();
+    const usersSnap=await get(ref(db,"users"));
+    if(usersSnap.exists()){
+      const users=usersSnap.val();
+      for(let uid in users){
+        if(users[uid].username===userVal){
+          throw {msg:"Username taken"};
+        }
+      }
+    }
+
+    const cred=await createUserWithEmailAndPassword(auth,emailVal,pass);
+    const user=cred.user;
+
+    const newCode=await generateUniqueCode();
 
     await set(ref(db,"users/"+user.uid),{
       name:nameVal,
-      username:usernameVal,
+      username:userVal,
       phone:phoneVal,
       email:emailVal,
-      referredBy:refCodeVal,
+      referredBy:refVal,
       refCode:newCode,
       balance:0,
       createdAt:Date.now()
@@ -343,20 +286,11 @@ window.register = async function(){
 
     await set(ref(db,"public/refCodes/"+newCode),user.uid);
 
-    showPopup("Account created successfully","success");
+    showPopup("Account created","success");
     setTimeout(()=>location.href="dashboard.html",1200);
 
   }catch(err){
-
-    let msg = "Registration failed";
-
-    if(err.custom) msg = err.custom;
-    else if(err.code === "auth/email-already-in-use") msg = "Email already exists";
-    else if(err.code === "auth/invalid-email") msg = "Invalid email format";
-    else if(err.code === "auth/weak-password") msg = "Weak password";
-    else msg = err.message;
-
-    showPopup(msg,"error");
+    showPopup(err.msg||err.message,"error");
   }
 
   loader.style.display="none";
@@ -364,4 +298,4 @@ window.register = async function(){
 </script>
 
 </body>
-</html>
+  </html>
