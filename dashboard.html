@@ -63,11 +63,13 @@ body{
 .balance-top{
   display:flex;
   gap:12px;
-  flex-wrap:wrap; /* ✅ allows stacking on small screens */
+  flex-wrap:nowrap; /* ❗ keep them on same row */
 }
 
 .balance-card{
-  flex:1;
+  flex:1; /* equal width */
+  min-width:0; /* ✅ prevents overflow breaking layout */
+
   background:linear-gradient(145deg,#020617,#0f172a);
   border:1px solid rgba(56,189,248,0.2);
   padding:14px;
@@ -91,13 +93,17 @@ body{
   font-weight:600;
   color:#22c55e;
 
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space:nowrap;      /* ✅ FORCE ONE LINE */
+  overflow:hidden;
+  text-overflow:ellipsis;
 }
 
-/* ✅ MOBILE FIX */
+/* ✅ ONLY stack on VERY small screens */
 @media(max-width: 400px){
+  .balance-top{
+    flex-wrap:wrap;
+  }
+
   .balance-card{
     flex:100%;
   }
