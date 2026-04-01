@@ -194,20 +194,18 @@ body{
 </div>
 
 <script type="module">
-/* 🔥 LOGIC UNCHANGED */
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getDatabase, ref, onValue, update, get } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCc637WbfRNZ8-0CN4sEqEnGY27-oAdGiw",
   authDomain: "betpawa-6ef7e.firebaseapp.com",
   databaseURL: "https://betpawa-6ef7e-default-rtdb.europe-west1.firebasedatabase.app",
   projectId: "betpawa-6ef7e",
-  storageBucket: "betpawa-6ef7e.firebasestorage.app",
+  storageBucket: "betpawa-6ef7e.appspot.com",
   messagingSenderId: "908050081607",
-  appId: "1:908050081607:web:db6e861fca63df78584e62",
-  measurementId: "G-C7M7HWTD01"
+  appId: "1:908050081607:web:db6e861fca63df78584e62"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -240,7 +238,7 @@ window.copyCode = function(){
   .catch(()=> showPopup("Copy failed","error"));
 }
 
-onAuthStateChanged(auth, user => {
+onAuthStateChanged(auth, async user => {
 
   if(!user){
     showPopup("User not authenticated","error");
@@ -249,27 +247,30 @@ onAuthStateChanged(auth, user => {
 
   const userRef = ref(db,"users/" + user.uid);
 
-  onValue(userRef, snap => {
+  onValue(userRef, async snap => {
     const data = snap.val();
     if(!data) return;
 
+    // Ensure referral code exists
     if(!data.refCode){
       myCode = generateCode();
-      update(userRef,{ refCode: myCode });
+      await update(userRef,{ refCode: myCode });
     } else {
       myCode = data.refCode;
     }
 
     document.getElementById("refCode").innerText = myCode;
 
+    // ✅ FIX: show referral earnings, not balance
     document.getElementById("refEarnings").innerText =
-      (data.balance || 0).toLocaleString() + " UGX";
+      (data.refEarnings || 0).toLocaleString() + " UGX";
 
-    onValue(ref(db,"users"), usersSnap => {
+    // Listen to all users
+    onValue(ref(db,"users"), async usersSnap => {
 
       let count = 0;
 
-      usersSnap.forEach(child => {
+      for(const child of usersSnap._snapshot.children_){
         const u = child.val();
         const uid = child.key;
 
@@ -277,33 +278,39 @@ onAuthStateChanged(auth, user => {
           count++;
         }
 
+        // ✅ PAY BONUS ON FIRST DEPOSIT ONLY
         if(
           u.referredBy === myCode &&
           u.firstDeposit > 0 &&
           !u.refBonusPaid
         ){
+
           let bonus = Math.floor(u.firstDeposit * 0.10);
 
-          update(ref(db,"users/" + user.uid),{
-            balance: (data.balance || 0) + bonus
+          // 🔥 Get fresh balance before updating
+          const freshSnap = await get(ref(db,"users/" + user.uid));
+          const freshData = freshSnap.val();
+
+          await update(ref(db,"users/" + user.uid),{
+            balance: (freshData.balance || 0) + bonus,
+            refEarnings: (freshData.refEarnings || 0) + bonus
           });
 
-          update(ref(db,"users/" + uid),{
+          await update(ref(db,"users/" + uid),{
             refBonusPaid: true
           });
 
           showPopup("You earned "+bonus+" UGX referral bonus","success");
         }
-
-      });
+      }
 
       document.getElementById("refCount").innerText = count;
+
     });
 
   });
 
 });
 </script>
-
 </body>
     </html>
