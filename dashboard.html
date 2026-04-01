@@ -310,7 +310,6 @@ body{
     // 🔥 instantly trap again
     history.pushState(null, "", location.href);
   });
-})();
 
 /* 🔥 SHOW MODAL */
 function showExit(){
@@ -483,33 +482,30 @@ function runFeed(){
   localStorage.setItem("feedIndex", i);
 }
 
+let feedInterval;
+
 function startFeedSafe(){
   if(feedStarted) return;
 
   const t = document.getElementById("toastFeed");
 
-  let feedInterval;
-
-if(t){
-  feedStarted = true;
-  runFeed();
-
-  // store interval so we can control it
-  feedInterval = setInterval(runFeed,10000);
-
-}else{
-  setTimeout(startFeedSafe,300);
+  if(t){
+    feedStarted = true;
+    runFeed();
+    feedInterval = setInterval(runFeed,10000);
+  }else{
+    setTimeout(startFeedSafe,300);
+  }
 }
 
-// ✅ ONLY ONCE
+// ✅ OUTSIDE function
 window.addEventListener("DOMContentLoaded", startFeedSafe);
 
-// ✅ visibility control (correct placement)
 document.addEventListener("visibilitychange", ()=>{
   if(document.hidden){
     clearInterval(feedInterval);
   }else{
-    clearInterval(feedInterval); // prevent duplicates
+    clearInterval(feedInterval);
     feedInterval = setInterval(runFeed,10000);
   }
 });
